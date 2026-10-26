@@ -45,13 +45,13 @@ internal static class Ui
         return b;
     }
     internal static TextBox Input(string hint = "", int width = 230)
-        => new() { Width = width, Text = hint, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
+        => new() { Width = width, Text = hint, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = System.Windows.VerticalAlignment.Center };
     internal static UIElement Bar(double ratio, int width = 160)
     {
-        var g = new Grid { Width = width, Height = 5, HorizontalAlignment = HorizontalAlignment.Left };
+        var g = new Grid { Width = width, Height = 5, HorizontalAlignment = System.Windows.HorizontalAlignment.Left };
         g.Children.Add(new Border { Background = new SolidColorBrush(Color.FromRgb(46, 50, 57)), CornerRadius = new CornerRadius(3) });
         g.Children.Add(new Border { Background = Cyan, Width = Math.Max(0, Math.Min(width, width * ratio)),
-            CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Left });
+            CornerRadius = new CornerRadius(3), HorizontalAlignment = System.Windows.HorizontalAlignment.Left });
         return g;
     }
     internal static UIElement WrapPage(UIElement child)
