@@ -16,7 +16,7 @@ Add the OpenAI organization admin key in Settings > AI providers and test the co
 
 ## Current limitations
 
-Calendar accepts local ICS files and HTTPS iCalendar URLs but does not support Google or Microsoft OAuth. The camera mirror is not implemented. The navigation and dashboard layout editor is implemented in source, but has not been run. Installer source is present; no installer executable or signed binary was produced. Live Windows behavior, external credentials, and visual fidelity to the supplied reference have not been verified here. See docs/FEATURE_COVERAGE.md.
+Google/Microsoft calendar OAuth, the user-activated camera mirror, and dashboard/module layout editing are implemented in source; real account authorization, webcam compatibility, interactive Windows behavior, accessibility, RTL and reference visual fidelity remain pending manual validation. CI has produced an unsigned Inno Setup installer and self-contained portable archive; a successful CI build does not prove installation and operation on a user's PC. AI usage cards intentionally exclude providers without a verified official quota. See docs/FEATURE_COVERAGE.md.
 
 ## Windows release downloads
 
@@ -30,7 +30,7 @@ To enable optional calendar sync, create a Google Cloud OAuth Desktop client (en
 
 ## Latest verified Windows package (2026-10-26)
 
-Windows Actions run [40272645652](https://github.com/Hakkam/AetherIsland/actions/runs/40272645652) passed .NET 10 Release build with **0 warnings / 0 errors** and **27 / 27 unit tests**. Its `AetherIsland-Windows-x64` artifact contains the actual `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`; it was generated from source commit `2b5e0880d54f9003a880cef0ae6119b5e1eb1fea` (subsequent documentation-only commits do not change binaries). Download from the run's Artifacts section; CI artifacts expire according to GitHub retention settings.
+Windows Actions run [40272645652](https://github.com/Hakkam/AetherIsland/actions/runs/40272645652) passed .NET 10 Release build with **0 warnings / 0 errors** and **27 / 27 unit tests**. Its `AetherIsland-Windows-x64` artifact contains the actual `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`; it was generated from source commit `2b5e0880d54f9003a880cef0ae6119b5e1eb1fea` (later source commits require a new successful CI run to obtain updated binaries). Download from the run's Artifacts section; CI artifacts expire according to GitHub retention settings.
 
 The release contains optional Google/Microsoft OAuth calendar connections (requires user-registered public client IDs), a user-activated camera mirror inside Media, and the adaptive four-widget reference layout. The SQLite stack was updated to Microsoft.Data.Sqlite 10.0.13 / SQLitePCLRaw.bundle_e_sqlite3 2.1.14 after a vulnerability warning in the earlier dependencies. All live sign-ins, hardware access and visual acceptance still require user-side Windows testing. Unsigned executable: verify downloaded file/source and apply normal Windows security precautions.
 
