@@ -61,3 +61,18 @@ No independent coding-agent spawning tool was available in the active work envir
 9. Verify code signing status and Windows SmartScreen UX before recommending wider public distribution.
 
 The absence of these proofs must be visible in every release overview. Source implementation is NOT equivalent to fully validated software, and cannot be advertised as 100% complete based on a passing CI workflow.
+
+## Verified Windows build and Portable ZIP — 2026-10-26
+
+Latest successful post-phase workflow: [Windows Portable V2 run 40317967047](https://github.com/Hakkam/AetherIsland/actions/runs/40317967047), code revision `b5202c56574433d7ebc689362c5e34101293214c`.
+
+- `dotnet build AetherIsland.slnx -c Release`: **0 errors, 0 warnings**.
+- Existing shared-domain tests: **27/27 pass**; these are not WPF mouse/visual tests.
+- `dotnet publish` self-contained win-x64: success; ZIP and SHA-256 generated and verified; ZIP contains no personal `Data/` folder.
+- Windows hosted-runner **process launch**: app did not exit on startup or during the 15-second idle sample, and created its `Data/` directory next to the portable EXE.
+- Hosted-runner sample after warmup: mean CPU **0%** over 15 seconds (rounded by PowerShell); working set **91.1 MiB**. These measurements are **not** 10-minute laptop benchmarks and are insufficient to guarantee user-device performance.
+- GitHub Actions artifact name: `AetherIsland-Portable-V2-win-x64`, artifact ID `12648080704`. Contains `AetherIsland-Portable-V2-win-x64.zip` and `AetherIsland-Portable-V2-win-x64.zip.sha256`.
+- SHA-256 of the **distribution ZIP**: `0f86db4434a4a3cef082d91aa0f026145b89e1ba6b5a708829e54c40d1158051`. The GitHub Actions **artifact wrapper ZIP** has a different digest and must not be confused with the distribution ZIP.
+- Artifact expires on 2026-11-25 (unless rerun or published as a separate release). Application binaries are unsigned.
+
+**Acceptance still open:** compare actual GUI with reference photographs/video using a Windows desktop, multi-monitor/DPI tests, screen time and media exercises, AI Admin account tests with an actual enforced spend limit, long-duration resource profiling, and signed release distribution. Source changes were implemented across all three workstreams; this does **not** establish that all user-facing acceptance gates have passed.
