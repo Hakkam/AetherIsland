@@ -86,7 +86,7 @@ public partial class MainWindow
             });
         }
         ring.Children.Add(new TextBlock { Text = $"{total / 60}m", FontSize = 18, FontWeight = FontWeights.Bold,
-            VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center, HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
             Foreground = Brushes.White });
         main.Children.Add(ring);
         var usage = new StackPanel { Width = 480 };
