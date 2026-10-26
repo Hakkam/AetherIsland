@@ -1,0 +1,156 @@
+<UserControl x:Class="AetherIsland.App.Views.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="Dashboard_Loaded" Unloaded="Dashboard_Unloaded">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="2,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Widget A: Weather -->
+        <Border x:Name="WeatherCard" Grid.Row="0" Grid.Column="0" Style="{DynamicResource WidgetCard}" Margin="0,0,5,5"
+                MouseLeftButtonDown="WeatherCard_Click" Cursor="Hand">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding WeatherCardTitle}" Style="{DynamicResource Muted}" />
+                <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding WeatherLoaded, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding WeatherGlyph}" FontFamily="{DynamicResource GlyphFont}"
+                               FontSize="34" Foreground="{DynamicResource WarningBrush}"
+                               VerticalAlignment="Center" Margin="0,0,14,0" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding WeatherTemp}" Style="{DynamicResource Numeric}" FontSize="30" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding WeatherDesc}" FontSize="12" Foreground="{DynamicResource Text2Brush}" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding WeatherHilo}" Style="{DynamicResource Muted}" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding LocationName}" Style="{DynamicResource Muted}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" MaxWidth="200" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                            Visibility="{Binding WeatherNotLoaded, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding NoLocationText}" Foreground="{DynamicResource Text2Brush}" FontSize="12" />
+                    <TextBlock Text="{Binding SetLocationLabel}" Foreground="{DynamicResource AccentDynamicBrush}"
+                               FontSize="12" Margin="0,6,0,0" Cursor="Hand"
+                               MouseLeftButtonDown="WeatherCard_Click" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Widget B: Quick toggles -->
+        <Border x:Name="TogglesCard" Grid.Row="0" Grid.Column="1" Style="{DynamicResource WidgetCard}" Margin="5,0,0,5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding TogglesCardTitle}" Style="{DynamicResource Muted}" />
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding Toggles}" VerticalAlignment="Center">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel HorizontalAlignment="Center" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <ToggleButton Style="{DynamicResource ToggleTile}"
+                                          Tag="{Binding Glyph}"
+                                          AutomationProperties.Name="{Binding Label}"
+                                          IsChecked="{Binding Value, Mode=OneWay}"
+                                          Command="{Binding ToggleCommand}"
+                                          Margin="2" ToolTip="{Binding Label}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Border>
+
+        <!-- Widget C: Application launcher -->
+        <Border x:Name="AppsCard" Grid.Row="1" Grid.Column="0" Style="{DynamicResource WidgetCard}" Margin="0,5,5,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding AppsCardTitle}" Style="{DynamicResource Muted}" />
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Disabled"
+                              HorizontalScrollBarVisibility="Hidden">
+                    <ItemsControl ItemsSource="{Binding Apps}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel HorizontalAlignment="Center" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Width="62" Height="54" Margin="2" Cursor="Hand"
+                                        Background="Transparent" BorderThickness="0"
+                                        Command="{Binding LaunchCommand}"
+                                        ToolTip="{Binding Name}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="Transparent" CornerRadius="10">
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <Border Width="30" Height="30" CornerRadius="15"
+                                                            Background="{DynamicResource Surface2Brush}"
+                                                            HorizontalAlignment="Center">
+                                                        <TextBlock Text="{Binding Initial}" FontSize="13" FontWeight="SemiBold"
+                                                                   Foreground="{DynamicResource AccentDynamicBrush}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Name}" FontSize="9" Margin="0,4,0,0"
+                                                               Foreground="{DynamicResource Text2Brush}"
+                                                               HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="58" />
+                                                </StackPanel>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource HoverBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <Button Grid.Row="1" Style="{DynamicResource GhostButton}" Content="{Binding AddAppLabel}"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Padding="8,3" FontSize="10.5"
+                        Command="{Binding AddAppCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- Widget D: Day progress -->
+        <Border x:Name="DayCard" Grid.Row="1" Grid.Column="1" Style="{DynamicResource WidgetCard}" Margin="5,5,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding DayProgressTitle}" Style="{DynamicResource Muted}" />
+                <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding DayPercentText}" Style="{DynamicResource Numeric}" FontSize="26" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding ElapsedLabel}" FontSize="11" Foreground="{DynamicResource Text2Brush}"
+                                   VerticalAlignment="Bottom" Margin="6,0,0,4" />
+                    </StackPanel>
+                    <ProgressBar Style="{DynamicResource SlimProgress}" Value="{Binding DayFraction, Mode=OneWay}"
+                                 Maximum="1" Margin="0,10,0,6" />
+                    <TextBlock Text="{Binding BedtimeText}" FontSize="11.5" Foreground="{DynamicResource Text2Brush}" />
+                    <TextBlock Text="{Binding WorkdayText}" FontSize="11.5" Foreground="{DynamicResource Text2Brush}" Margin="0,3,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

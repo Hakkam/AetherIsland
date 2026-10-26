@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>AetherIsland.App</RootNamespace>
+    <AssemblyName>AetherIsland</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="AetherIsland.Core" />
+    <Using Include="AetherIsland.Core.Localization" />
+    <Using Include="AetherIsland.Core.Models" />
+    <Using Include="AetherIsland.App.Services" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AetherIsland.Core\AetherIsland.Core.csproj" />
+    <ProjectReference Include="..\AetherIsland.Data\AetherIsland.Data.csproj" />
+    <ProjectReference Include="..\AetherIsland.Integrations\AetherIsland.Integrations.csproj" />
+    <ProjectReference Include="..\AetherIsland.Windows\AetherIsland.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

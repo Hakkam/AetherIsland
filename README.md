@@ -1,0 +1,19 @@
+# Aether Island
+
+A Windows 10/11 WPF floating productivity island built with .NET 10. The compact panel expands to dashboard, files, tasks, notes, focus, media, calendar, weather, screen time, network, system, wellbeing, AI, and utilities.
+
+## Build
+
+Install the .NET 10 SDK on Windows. Run dotnet restore AetherIsland.slnx and dotnet build AetherIsland.slnx -c Release. Run ./tools/publish-win-x64.ps1 for a framework-dependent portable build under release/win-x64 (requires the .NET 10 Desktop Runtime). Use -SelfContained for a single-file build when the runtime packs are available. The release/AetherIsland-manual-win-x64.zip package can be extracted and run with AetherIsland.exe or Run-AetherIsland.cmd. Install-AetherIsland.cmd copies it to the current user's LocalAppData Programs folder and creates a Start menu shortcut. The manual package requires .NET 10 Desktop Runtime. For a setup executable, install Inno Setup 6 and run ./tools/package-installer.ps1; the script publishes first and compiles installer/AetherIsland.iss into release/AetherIsland-Setup-win-x64.exe. The installer uses a per-user directory and creates an uninstaller. The framework-dependent publish succeeded in this environment. An installer executable and self-contained publish have not been produced or exercised.
+
+The application stores local data under %LOCALAPPDATA%/AetherIsland. API keys are encrypted for the current Windows user with DPAPI; never ship that data directory.
+
+## AI usage policy
+
+Only an OpenAI API organization with an admin key and an enforced monthly hard spend limit can appear in usage cards. The limit and period-to-date cost come from official Admin API endpoints. A ChatGPT or Codex subscription is separate. If either value is inaccessible, the card is excluded. Existing settings for Anthropic, Z.AI, and local clients are retained but ignored by the usage center for now. Agent detection is a separate consent-controlled view.
+
+Add the OpenAI organization admin key in Settings > AI providers and test the connection. The key is sent only to api.openai.com.
+
+## Current limitations
+
+Calendar accepts local ICS files and HTTPS iCalendar URLs but does not support Google or Microsoft OAuth. The camera mirror is not implemented. The navigation and dashboard layout editor is implemented in source, but has not been run. Installer source is present; no installer executable or signed binary was produced. Live Windows behavior, external credentials, and visual fidelity to the supplied reference have not been verified here. See docs/FEATURE_COVERAGE.md.

@@ -1,0 +1,87 @@
+<UserControl x:Class="AetherIsland.App.Views.NotesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="2,0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="205" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- list column -->
+        <Grid Grid.Column="0" Margin="0,0,8,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Button Style="{DynamicResource PrimaryButton}" Content="{Binding NewNoteLabel}"
+                    Command="{Binding NewNoteCommand}" HorizontalAlignment="Stretch" />
+            <TextBox Grid.Row="1" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,8,0,8" />
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Notes}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="Transparent" CornerRadius="9" Padding="9,7" Margin="0,0,0,4"
+                                    Cursor="Hand" MouseLeftButtonDown="NoteRow_Click">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Surface2Brush}" />
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource HoverBrush}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel>
+                                    <Grid>
+                                        <TextBlock Text="{Binding Title}" FontSize="11.5" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="140" HorizontalAlignment="Left" />
+                                        <TextBlock Text="&#xE840;" FontFamily="{DynamicResource GlyphFont}" FontSize="10"
+                                                   Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Right"
+                                                   Visibility="{Binding IsPinned, Converter={StaticResource BoolToVis}}" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Preview}" FontSize="10" Foreground="{DynamicResource Text2Brush}"
+                                               TextTrimming="CharacterEllipsis" MaxWidth="150" HorizontalAlignment="Left" Margin="0,3,0,0" />
+                                    <TextBlock Text="{Binding UpdatedText}" FontSize="9" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- editor column -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{DynamicResource IconButton}" Content="&#xE840;" Command="{Binding PinCommand}"
+                            ToolTip="{Binding PinLabel}" />
+                    <Button Style="{DynamicResource IconButton}" Content="&#xE74D;" Command="{Binding DeleteNoteCommand}" />
+                </StackPanel>
+            </Grid>
+
+            <TextBox Grid.Row="1" Text="{Binding EditorText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                     AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top"
+                     VerticalScrollBarVisibility="Auto" FontSize="12.5"
+                     Background="Transparent" Padding="4,8" />
+
+            <TextBlock Grid.Row="2" Text="{Binding StatusText}" Style="{DynamicResource Muted}" Margin="4,4,0,0" />
+        </Grid>
+    </Grid>
+</UserControl>

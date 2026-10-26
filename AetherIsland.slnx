@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AetherIsland.App/AetherIsland.App.csproj" />
+    <Project Path="src/AetherIsland.Core/AetherIsland.Core.csproj" />
+    <Project Path="src/AetherIsland.Data/AetherIsland.Data.csproj" />
+    <Project Path="src/AetherIsland.Integrations/AetherIsland.Integrations.csproj" />
+    <Project Path="src/AetherIsland.Windows/AetherIsland.Windows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AetherIsland.Tests/AetherIsland.Tests.csproj" />
+  </Folder>
+</Solution>

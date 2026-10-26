@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>AetherIsland.Core</RootNamespace>
+    <Description>Core models, settings, localization and pure logic for Aether Island.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Localization\strings.en.json" />
+    <EmbeddedResource Include="Localization\strings.ar.json" />
+    <EmbeddedResource Include="Localization\strings.tr.json" />
+  </ItemGroup>
+
+</Project>

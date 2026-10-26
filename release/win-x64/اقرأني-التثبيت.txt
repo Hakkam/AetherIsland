@@ -1,0 +1,15 @@
+Aether Island — التشغيل والتثبيت اليدوي
+
+1) فك ضغط الحزمة كاملة في مجلد واحد.
+2) للتشغيل المحمول، افتح AetherIsland.exe أو Run-AetherIsland.cmd.
+3) للتثبيت لكل مستخدم، افتح Install-AetherIsland.cmd. تُنسخ ملفات البرنامج إلى
+   %LOCALAPPDATA%\Programs\Aether Island
+   ويُنشأ اختصار في قائمة ابدأ.
+4) لإنشاء اختصار سطح المكتب أيضًا، شغّل Install-AetherIsland.ps1 من PowerShell
+   مع الخيار -DesktopShortcut.
+5) لإزالة النسخة المثبتة يدويًا، أغلق التطبيق، احذف مجلد البرنامج المذكور
+   واختصار Aether Island من قائمة ابدأ. بياناتك محفوظة في
+   %LOCALAPPDATA%\AetherIsland ولا تُحذف مع ملفات البرنامج.
+
+هذه النسخة تتطلب .NET 10 Desktop Runtime المثبت على Windows 10/11 x64.
+الحزمة غير موقعة رقميًا. ما زال تكامل OAuth والكاميرا واختبار الواجهة الكامل قيد العمل.

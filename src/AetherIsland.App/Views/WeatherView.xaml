@@ -1,0 +1,176 @@
+<UserControl x:Class="AetherIsland.App.Views.WeatherView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid Margin="2,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- search -->
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            <Button Grid.Column="1" Style="{DynamicResource IconButton}" Content="&#xE721;" Margin="6,0,0,0"
+                    Command="{Binding SearchCommand}" ToolTip="{Binding SearchLabel}" />
+        </Grid>
+
+        <!-- search results -->
+        <Border Grid.Row="1" Background="{DynamicResource SurfaceBrush}" CornerRadius="10" Padding="6"
+                BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1"
+                Visibility="{Binding HasResults, Converter={StaticResource BoolToVis}}"
+                VerticalAlignment="Top" Panel.ZIndex="3" Margin="0,-4,0,0">
+            <ItemsControl ItemsSource="{Binding SearchResults}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Style="{DynamicResource GhostButton}" Content="{Binding Label}" HorizontalContentAlignment="Left"
+                                Command="{Binding DataContext.PickResultCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                CommandParameter="{Binding}" Margin="0,1" Padding="10,6" FontSize="11.5" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <!-- main -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,2,0,0">
+            <StackPanel>
+                <!-- error / empty -->
+                <StackPanel Visibility="{Binding ShowError, Converter={StaticResource BoolToVis}}" Margin="0,40,0,0"
+                            HorizontalAlignment="Center">
+                    <TextBlock Text="&#xE9D6;" FontFamily="{DynamicResource GlyphFont}" FontSize="32"
+                               Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding ErrorText}" FontSize="12" Foreground="{DynamicResource Text2Brush}"
+                               HorizontalAlignment="Center" Margin="0,10,0,0" />
+                    <Button Style="{DynamicResource GhostButton}" Content="{Binding RetryLabel}"
+                            Command="{Binding RefreshCommand}" Margin="0,10,0,0" HorizontalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding HasWeather, Converter={StaticResource BoolToVis}}">
+                    <!-- current -->
+                    <Grid Margin="2,0,2,10">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding WeatherGlyph}" FontFamily="{DynamicResource GlyphFont}" FontSize="38"
+                                       Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" Margin="0,0,16,0" />
+                            <TextBlock Text="{Binding TempText}" Style="{DynamicResource Numeric}" FontSize="42" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" />
+                            <StackPanel VerticalAlignment="Center" Margin="16,0,0,0">
+                                <TextBlock Text="{Binding Description}" FontSize="13" Foreground="{DynamicResource TextBrush}" />
+                                <TextBlock Text="{Binding FeelsLikeText}" FontSize="11" Foreground="{DynamicResource Text2Brush}" Margin="0,3,0,0" />
+                                <TextBlock Text="{Binding HiLoText}" FontSize="11" Foreground="{DynamicResource Text2Brush}" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <TextBlock Text="{Binding LocationName}" FontSize="11" Foreground="{DynamicResource Text2Brush}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <Button Style="{DynamicResource IconButton}" Content="&#xE72C;" Command="{Binding RefreshCommand}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="{Binding CachedText}" FontSize="10" FontStyle="Italic" Foreground="{DynamicResource WarningBrush}"
+                               HorizontalAlignment="Center" Margin="0,0,0,8"
+                               Visibility="{Binding IsFromCache, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- detail chips -->
+                    <UniformGrid Columns="6" Margin="0,0,0,10">
+                        <Border Style="{DynamicResource WidgetCard}" Padding="8,7" Margin="0,0,4,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding HumidityLabel}" Style="{DynamicResource Muted}" FontSize="9" />
+                                <TextBlock Text="{Binding HumidityText}" Style="{DynamicResource Numeric}" FontSize="12.5" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource WidgetCard}" Padding="8,7" Margin="2,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding WindLabel}" Style="{DynamicResource Muted}" FontSize="9" />
+                                <TextBlock Text="{Binding WindText}" Style="{DynamicResource Numeric}" FontSize="12.5" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource WidgetCard}" Padding="8,7" Margin="2,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding PressureLabel}" Style="{DynamicResource Muted}" FontSize="9" />
+                                <TextBlock Text="{Binding PressureText}" Style="{DynamicResource Numeric}" FontSize="12.5" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource WidgetCard}" Padding="8,7" Margin="2,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding UvLabel}" Style="{DynamicResource Muted}" FontSize="9" />
+                                <TextBlock Text="{Binding UvText}" Style="{DynamicResource Numeric}" FontSize="12.5" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource WidgetCard}" Padding="8,7" Margin="2,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding SunriseLabel}" Style="{DynamicResource Muted}" FontSize="9" />
+                                <TextBlock Text="{Binding SunriseText}" Style="{DynamicResource Numeric}" FontSize="12.5" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{DynamicResource WidgetCard}" Padding="8,7" Margin="4,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding SunsetLabel}" Style="{DynamicResource Muted}" FontSize="9" />
+                                <TextBlock Text="{Binding SunsetText}" Style="{DynamicResource Numeric}" FontSize="12.5" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- hourly -->
+                    <TextBlock Text="{Binding HourlyTitle}" Style="{DynamicResource SectionTitle}" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,12">
+                        <ItemsControl ItemsSource="{Binding Hourly}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="12" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center" Margin="2">
+                                        <TextBlock Text="{Binding TimeText}" FontSize="9.5" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="{Binding Glyph}" FontFamily="{DynamicResource GlyphFont}" FontSize="15"
+                                                   Foreground="{DynamicResource Text2Brush}" HorizontalAlignment="Center" Margin="0,5" />
+                                        <TextBlock Text="{Binding TempText}" Style="{DynamicResource Numeric}" FontSize="11" HorizontalAlignment="Center" />
+                                        <TextBlock Text="{Binding PrecipText}" FontSize="8.5" Foreground="{DynamicResource AccentDynamicBrush}"
+                                                   HorizontalAlignment="Center" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- daily -->
+                    <TextBlock Text="{Binding DailyTitle}" Style="{DynamicResource SectionTitle}" />
+                    <ItemsControl ItemsSource="{Binding Daily}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="60" />
+                                        <ColumnDefinition Width="30" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="50" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding DayName}" FontSize="11.5" Foreground="{DynamicResource Text2Brush}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding Glyph}" FontFamily="{DynamicResource GlyphFont}"
+                                               FontSize="13" Foreground="{DynamicResource Text2Brush}" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock Text="{Binding MinText}" Style="{DynamicResource Numeric}" FontSize="11.5"
+                                                   Foreground="{DynamicResource MutedBrush}" />
+                                        <TextBlock Text=" — " FontSize="11.5" Foreground="{DynamicResource MutedBrush}" />
+                                        <TextBlock Text="{Binding MaxText}" Style="{DynamicResource Numeric}" FontSize="11.5"
+                                                   Foreground="{DynamicResource TextBrush}" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="3" Text="{Binding PrecipText}" FontSize="9.5"
+                                               Foreground="{DynamicResource AccentDynamicBrush}" HorizontalAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

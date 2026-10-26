@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RootNamespace>AetherIsland.Integrations</RootNamespace>
+    <Description>External integrations: weather, calendar, media session, AI providers.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AetherIsland.Core\AetherIsland.Core.csproj" />
+    <ProjectReference Include="..\AetherIsland.Windows\AetherIsland.Windows.csproj" />
+  </ItemGroup>
+
+</Project>

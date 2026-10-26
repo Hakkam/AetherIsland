@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>AetherIsland.Windows</RootNamespace>
+    <Description>Native Windows interop layer (WLAN, audio endpoints, hotkeys, system metrics, DPAPI).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="9.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AetherIsland.Core\AetherIsland.Core.csproj" />
+  </ItemGroup>
+
+</Project>
