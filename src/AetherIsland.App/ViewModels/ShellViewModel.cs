@@ -162,6 +162,11 @@ public partial class ShellViewModel : ObservableObject
             }).ToList();
         }
 
+        // A user can hide every module in Settings; keep the shell recoverable
+        // rather than throwing on NavItems.First() at the next application start.
+        if (items.Count == 0)
+            items.Add(all.First(n => n.Id == "dashboard"));
+
         NavItems.Clear();
         foreach (var item in items) NavItems.Add(item);
     }
