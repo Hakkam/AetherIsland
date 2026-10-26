@@ -56,7 +56,7 @@ public partial class MainWindow
         foreach (var path in _shelf.Take(10))
         {
             var row = Ui.H(Ui.Button("↗", () => OpenUrl(path), "Open file"),
-                Ui.Button("↥", () => { }, "Drag this row to Windows Explorer"),
+                Ui.Text(" ↥ Drag ", 11, false, Ui.Dim),
                 Ui.Text(Path.GetFileName(path), 11),
                 Ui.Button("×", () =>
                 {
