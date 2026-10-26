@@ -51,3 +51,15 @@ On Windows 10/11 with .NET SDK 10:
 Output: `release/portable-v2/AetherIsland-Portable-V2-win-x64.zip` and matching SHA-256 file.
 
 **Release caveat:** The application code and build pipeline are not equivalent to a human-verified interactive build. Tests, compiled artifacts and on-device acceptance are reported separately; unsigned binaries may prompt Windows SmartScreen.
+
+## Windows UI interaction fix (2026-10-26)
+
+The previous portable V2 build displayed missing-glyph rectangles because navigation used Segoe MDL2 Assets Private Use characters. The new app draws its own vectors, and the draggable header has a separate grip from clickable navigation. Expanding snaps WPF window bounds before a small opacity fade, preventing layered-window hit-test geometry from lagging the visible pane.
+
+**Latest verified Windows preview:** [GitHub Actions run 40349350174](https://github.com/Hakkam/AetherIsland/actions/runs/40349350174). The full build passed 27 tests with no errors or warnings. A live WPF layout acceptance step expanded the window, checked that module content height was nonzero, invoked the ten navigation buttons, and collapsed the island. The portable app launched and stayed alive for idle sampling, with CPU reported at 0% (rounded) and working set 92.3 MiB on that runner. These results are *not* an actual on-device mouse/visual-fidelity guarantee.
+
+**Portable ZIP SHA-256:** `885bcd33f68842429fec4f8fd55cf5ecbd60c2f0563229022d61cd379fc89d10`.
+
+**After the next one-time ZIP extraction:** keep `Preview-AetherIsland.cmd` and `Preview-AetherIsland.ps1` beside `AetherIsland.exe`. Install [GitHub CLI](https://cli.github.com/) and authenticate once with `gh auth login`. Exit the app from its tray icon, then double-click `Preview-AetherIsland.cmd`: the launcher fetches the newest successful workflow artifact, verifies SHA-256, replaces app files without overwriting `Data/`, and starts the preview. It skips downloads when already current. It will not install GitHub CLI or authorize GitHub automatically.
+
+A full interactive desktop visual comparison against the three user-provided references is still required.
