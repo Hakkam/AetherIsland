@@ -159,7 +159,12 @@
     "week": "This week",
     "icsUrl": "HTTPS iCalendar URL",
     "addUrl": "Add URL",
-    "invalidUrl": "Enter a valid HTTPS calendar URL"
+    "invalidUrl": "Enter a valid HTTPS calendar URL",
+    "connectGoogle": "Connect Google",
+    "connectMicrosoft": "Connect Microsoft",
+    "disconnectGoogle": "Disconnect Google",
+    "disconnectMicrosoft": "Disconnect Microsoft",
+    "openBrowser": "Finish authorization in your browser…"
   },
   "weather": {
     "feelsLike": "Feels like",

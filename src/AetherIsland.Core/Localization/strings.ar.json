@@ -159,7 +159,12 @@
     "week": "هذا الأسبوع",
     "icsUrl": "رابط تقويم iCalendar عبر HTTPS",
     "addUrl": "إضافة الرابط",
-    "invalidUrl": "أدخل رابط تقويم HTTPS صالحًا"
+    "invalidUrl": "أدخل رابط تقويم HTTPS صالحًا",
+    "connectGoogle": "ربط Google",
+    "connectMicrosoft": "ربط Microsoft",
+    "disconnectGoogle": "فصل Google",
+    "disconnectMicrosoft": "فصل Microsoft",
+    "openBrowser": "أكمل التفويض في المتصفح…"
   },
   "weather": {
     "feelsLike": "الإحساس الفعلي",

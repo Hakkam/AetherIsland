@@ -159,7 +159,12 @@
     "week": "Bu hafta",
     "icsUrl": "HTTPS iCalendar bağlantısı",
     "addUrl": "Bağlantı ekle",
-    "invalidUrl": "Geçerli bir HTTPS takvim bağlantısı girin"
+    "invalidUrl": "Geçerli bir HTTPS takvim bağlantısı girin",
+    "connectGoogle": "Google bağla",
+    "connectMicrosoft": "Microsoft bağla",
+    "disconnectGoogle": "Google bağlantısını kes",
+    "disconnectMicrosoft": "Microsoft bağlantısını kes",
+    "openBrowser": "Yetkilendirmeyi tarayıcıda tamamlayın…"
   },
   "weather": {
     "feelsLike": "Hissedilen",
