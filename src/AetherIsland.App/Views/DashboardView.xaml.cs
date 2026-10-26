@@ -28,8 +28,17 @@ public partial class DashboardView
         _vm = null;
     }
 
+    private void Dashboard_SizeChanged(object sender, SizeChangedEventArgs e) => ApplyLayout();
+
     private void ApplyLayout()
     {
+        // Reference-faithful single-row layout on wide panels; compact 2x2 fallback.
+        var columns = DashboardGrid.ActualWidth >= 780 ? 4 : 2;
+        for (var i = 0; i < DashboardGrid.ColumnDefinitions.Count; i++)
+            DashboardGrid.ColumnDefinitions[i].Width = i < columns
+                ? new GridLength(1, GridUnitType.Star) : new GridLength(0);
+        DashboardGrid.RowDefinitions[1].Height = columns == 4
+            ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         var cards = new Dictionary<string, FrameworkElement>
         {
             ["weather"] = WeatherCard, ["toggles"] = TogglesCard,
@@ -45,8 +54,12 @@ public partial class DashboardView
             var visible = !(settings.HiddenWidgets ?? new()).Contains(id);
             card.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
             if (!visible) continue;
-            Grid.SetRow(card, position / 2);
-            Grid.SetColumn(card, position % 2);
+            Grid.SetRow(card, position / columns);
+            Grid.SetColumn(card, position % columns);
+            card.Margin = columns == 4
+                ? new Thickness(position == 0 ? 0 : 5, 0, position == 3 ? 0 : 5, 0)
+                : new Thickness(position % 2 == 0 ? 0 : 5, position < 2 ? 0 : 5,
+                    position % 2 == 0 ? 5 : 0, position < 2 ? 5 : 0);
             position++;
         }
     }
