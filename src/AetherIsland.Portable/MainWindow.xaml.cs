@@ -97,7 +97,7 @@ public partial class MainWindow : Window
             PortableData.SaveSettings();
         });
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Check updates / releases", null, (_, _) =>
+        menu.Items.Add("Open published releases", null, (_, _) =>
             OpenUrl("https://github.com/Hakkam/AetherIsland/releases"));
         menu.Items.Add("Settings", null, (_, _) => { Expand(); Navigate("settings"); });
         menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
