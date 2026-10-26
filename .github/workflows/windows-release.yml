@@ -1,0 +1,56 @@
+name: Build Windows installer
+
+on:
+  push:
+    branches:
+      - AetherIsland
+    paths:
+      - "src/**"
+      - "tools/**"
+      - "installer/**"
+      - "tests/**"
+      - "*.slnx"
+      - "Directory.Build.props"
+      - ".github/workflows/windows-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-release:
+    name: Windows x64 / .NET 10
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Restore
+        run: dotnet restore AetherIsland.slnx
+      - name: Build release
+        run: dotnet build AetherIsland.slnx -c Release --no-restore
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Create self-contained executable and Setup.exe
+        shell: pwsh
+        run: ./tools/package-installer.ps1 -SelfContained
+      - name: Archive portable application
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "release/win-x64/*" -DestinationPath "release/AetherIsland-Portable-win-x64.zip" -CompressionLevel Optimal -Force
+          if (!(Test-Path "release/AetherIsland-Portable-win-x64.zip")) { throw "Portable package missing" }
+          if (!(Test-Path "release/AetherIsland-Setup-win-x64.exe")) { throw "Installer missing" }
+      - name: Upload Setup and portable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherIsland-Windows-x64
+          path: |
+            release/AetherIsland-Setup-win-x64.exe
+            release/AetherIsland-Portable-win-x64.zip
+          if-no-files-found: error
+          retention-days: 30

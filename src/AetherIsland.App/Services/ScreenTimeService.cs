@@ -35,17 +35,18 @@ public sealed class ScreenTimeService
 
     public void Start()
     {
-        if (TrackingEnabled) _timer.Start();
+        if (TrackingEnabled) { _current = null; _timer.Start(); }
     }
 
     public void SetConsent(bool enabled)
     {
         TrackingEnabled = enabled;
         _settings.Privacy.ScreenTimeConsent = enabled;
-        if (enabled) _timer.Start(); else _timer.Stop();
+        if (enabled) { _current = null; _timer.Start(); }
+        else { FlushCurrent(); _current = null; _timer.Stop(); }
     }
 
-    public void Pause() => _timer.Stop();
+    public void Pause() { FlushCurrent(); _current = null; _timer.Stop(); }
     public void Resume()
     {
         if (TrackingEnabled) _timer.Start();

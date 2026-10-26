@@ -34,3 +34,11 @@ Statuses distinguish source coverage from interactive acceptance. The Windows De
 4. With an authorized OpenAI organization admin key, compare monthly limit and cost with the official dashboard, including zero spend and no enforced cap.
 5. Review Arabic RTL layout and compare the floating dashboard with the supplied reference.
 6. Inspect the published framework-dependent folder and compile the Inno Setup installer. Inno Setup 6 and self-contained runtime packs are unavailable here.
+
+## 2026-10-26 / Windows packaging follow-up
+
+- Added GitHub Actions workflow to build and package on a real Windows runner.
+- CI invokes .NET 10 restore/build and produces a self-contained win-x64 publish plus Inno Setup installation executable; the generated assets are attached to successful workflow runs.
+- Added removable manual-install tooling that preserves local user data by default.
+- These are source-level improvements until a successful workflow run and Windows interactive acceptance confirm the actual artifacts.
+- Existing missing requirements (Google/Microsoft OAuth, camera mirror, hardware-dependent Windows acceptance) remain incomplete. Do not mark them verified.
