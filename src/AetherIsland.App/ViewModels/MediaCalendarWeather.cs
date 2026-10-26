@@ -137,7 +137,7 @@ public partial class MediaViewModel : ObservableObject, ILifecycleAware
             if (bitmap is null) return;
             using var bgra = SoftwareBitmap.Convert(bitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore);
             using var stream = new InMemoryRandomAccessStream();
-            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+            var encoder = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId, stream);
             encoder.BitmapTransform.ScaledWidth = (uint)Math.Min(bgra.PixelWidth, 320);
             encoder.BitmapTransform.ScaledHeight = (uint)Math.Max(1, bgra.PixelHeight * (int)encoder.BitmapTransform.ScaledWidth / bgra.PixelWidth);
             encoder.SetSoftwareBitmap(bgra);
