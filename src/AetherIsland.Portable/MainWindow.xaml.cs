@@ -1,0 +1,293 @@
+using System.Diagnostics;
+using System.Globalization;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using AetherIsland.Integrations.Media;
+
+namespace AetherIsland.Portable;
+
+/// <summary>
+/// An explicit, no-focus-loss auto-collapse state machine. A click expands;
+/// a move past the OS drag threshold drags, not expands. No fullscreen polling.
+/// </summary>
+public partial class MainWindow : Window
+{
+    private const double PillWidth = 188, PillHeight = 48, PanelWidth = 945, PanelHeight = 256;
+    private bool _expanded;
+    private bool _pinned;
+    private bool _pillPressed;
+    private Point _pressPosition;
+    private string _current = "dashboard";
+    private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly Dictionary<string, Button> _buttons = new();
+    private readonly System.Windows.Forms.NotifyIcon _tray;
+    private readonly SmtcMediaWatcher _media = new();
+    private bool _mediaStarted;
+    private readonly ActivityTracker _activity = new();
+    private readonly Dictionary<string, string> _glyphs = new()
+    {
+        ["dashboard"] = "\uE80F", ["screen"] = "\uE9D9", ["media"] = "\uE768",
+        ["shelf"] = "\uE8B7", ["tasks"] = "\uE8FD", ["notes"] = "\uE70B",
+        ["focus"] = "\uE916", ["weather"] = "\uE753", ["network"] = "\uE701",
+        ["ai"] = "\uE8B2"
+    };
+    private readonly Dictionary<string, string> _titles = new()
+    {
+        ["dashboard"] = "Dashboard", ["screen"] = "Screen time", ["media"] = "Now playing",
+        ["shelf"] = "File shelf", ["tasks"] = "Tasks", ["notes"] = "Notes",
+        ["focus"] = "Focus timer", ["weather"] = "Weather", ["network"] = "Network",
+        ["ai"] = "Verified AI quota"
+    };
+
+    public MainWindow()
+    {
+        InitializeComponent();
+        _pinned = PortableData.Settings.Pinned;
+        PinButton.Content = _pinned ? "\uE77A" : "\uE718";
+        var wa = SystemParameters.WorkArea;
+        Left = PortableData.Settings.Left ?? wa.Left + (wa.Width - PillWidth) / 2;
+        Top = PortableData.Settings.Top ?? wa.Top + 7;
+        ClampToVisibleMonitor();
+        BuildNavigation();
+        _tray = BuildTray();
+        _clock.Tick += (_, _) => UpdateClock();
+        _clock.Start();
+        UpdateClock();
+        Navigate("dashboard");  // Prepare panel before first expansion.
+        Closed += (_, _) =>
+        {
+            _clock.Stop();
+            _activity.Dispose();
+            _media.Dispose();
+            _tray.Visible = false;
+            _tray.Dispose();
+        };
+    }
+
+    private System.Windows.Forms.NotifyIcon BuildTray()
+    {
+        var tray = new System.Windows.Forms.NotifyIcon
+        {
+            Text = "Aether Island Portable",
+            Visible = true,
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath
+                ?? Process.GetCurrentProcess().MainModule?.FileName ?? "") 
+        };
+        tray.MouseUp += (_, e) =>
+        {
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+                Dispatcher.BeginInvoke((Action)Toggle);
+        };
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+        menu.Items.Add("Open / collapse", null, (_, _) => Toggle());
+        menu.Items.Add("Pin / unpin", null, (_, _) => TogglePin());
+        menu.Items.Add("Reset position", null, (_, _) =>
+        {
+            PortableData.Settings.Left = null;
+            PortableData.Settings.Top = null;
+            var wa = SystemParameters.WorkArea;
+            var x = wa.Left + (wa.Width - PillWidth) / 2;
+            var y = wa.Top + 7;
+            if (_expanded) x -= (PanelWidth - PillWidth) / 2;
+            Left = x; Top = y;
+            PortableData.SaveSettings();
+        });
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Check updates / releases", null, (_, _) =>
+            OpenUrl("https://github.com/Hakkam/AetherIsland/releases"));
+        menu.Items.Add("Settings", null, (_, _) => { Expand(); Navigate("settings"); });
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Exit Aether Island", null, (_, _) => System.Windows.Application.Current.Shutdown());
+        tray.ContextMenuStrip = menu;
+        return tray;
+    }
+
+    private void BuildNavigation()
+    {
+        foreach (var (id, glyph) in _glyphs)
+        {
+            var button = new Button
+            {
+                Content = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"),
+                FontSize = 13, Width = 34, Height = 29, Padding = new Thickness(0),
+                Margin = new Thickness(1, 0, 1, 0),
+                Background = Brushes.Transparent, ToolTip = _titles[id],
+                Tag = id
+            };
+            button.Click += (_, _) => Navigate(id);
+            Navigation.Children.Add(button);
+            _buttons[id] = button;
+        }
+    }
+
+    private void Navigate(string name)
+    {
+        _current = name;
+        foreach (var (id, button) in _buttons)
+            button.Background = id == name
+                ? new SolidColorBrush(Color.FromRgb(49, 57, 71)) : Brushes.Transparent;
+        // Content is reconstructed lazily, without polling other tabs.
+        ContentHost.Content = name switch
+        {
+            "dashboard" => RenderDashboard(),
+            "screen" => RenderScreenTime(),
+            "media" => RenderMedia(),
+            "shelf" => RenderShelf(),
+            "tasks" => RenderTasks(),
+            "notes" => RenderNotes(),
+            "focus" => RenderFocus(),
+            "weather" => RenderWeather(),
+            "network" => RenderNetwork(),
+            "ai" => RenderAi(),
+            "settings" => RenderSettings(),
+            _ => RenderDashboard()
+        };
+    }
+
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        PillClock.Text = now.ToString("HH:mm", CultureInfo.CurrentCulture);
+        HeaderClock.Text = now.ToString("HH:mm", CultureInfo.CurrentCulture);
+        HeaderDate.Text = now.ToString("MMM dd ddd", CultureInfo.CurrentCulture);
+        if (_expanded && (_current == "dashboard" || _current == "screen"))
+            Navigate(_current);
+    }
+
+    private void Toggle() { if (_expanded) Collapse(); else Expand(); }
+
+    private void Expand()
+    {
+        if (_expanded) { Activate(); return; }
+        _expanded = true;
+        var x = Left - (PanelWidth - PillWidth) / 2;
+        var y = Top;
+        Panel.Visibility = Visibility.Visible;
+        Pill.Visibility = Visibility.Collapsed;
+        AnimateWindow(PanelWidth, PanelHeight, x, y);
+        Activate();
+    }
+
+    private void Collapse()
+    {
+        if (!_expanded) return;
+        _expanded = false;
+        var x = Left + (Width - PillWidth) / 2;
+        var y = Top;
+        Panel.Visibility = Visibility.Collapsed;
+        Pill.Visibility = Visibility.Visible;
+        AnimateWindow(PillWidth, PillHeight, x, y);
+    }
+
+    private void AnimateWindow(double width, double height, double x, double y)
+    {
+        var fromW = Width; var fromH = Height; var fromX = Left; var fromY = Top;
+        BeginAnimation(WidthProperty, null); BeginAnimation(HeightProperty, null);
+        BeginAnimation(LeftProperty, null); BeginAnimation(TopProperty, null);
+        var area = SystemParameters.WorkArea;
+        x = Math.Clamp(x, area.Left, Math.Max(area.Left, area.Right - width));
+        y = Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - height));
+        Width = width; Height = height; Left = x; Top = y;
+        if (PortableData.Settings.ReducedMotion) return;
+        var t = TimeSpan.FromMilliseconds(185);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        DoubleAnimation From(double a, double b) => new(a, b, t)
+        { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
+        BeginAnimation(WidthProperty, From(fromW, width));
+        BeginAnimation(HeightProperty, From(fromH, height));
+        BeginAnimation(LeftProperty, From(fromX, x));
+        BeginAnimation(TopProperty, From(fromY, y));
+    }
+
+    private void ClampToVisibleMonitor()
+    {
+        var area = SystemParameters.WorkArea;
+        if (Left < area.Left - 30 || Left > area.Right - 30)
+            Left = area.Left + (area.Width - PillWidth) / 2;
+        if (Top < area.Top || Top > area.Bottom - PillHeight)
+            Top = area.Top + 7;
+    }
+
+    private void SavePosition()
+    {
+        // Store the equivalent collapsed pill position, not the expanded panel's x.
+        PortableData.Settings.Left = _expanded ? Left + (Width - PillWidth) / 2 : Left;
+        PortableData.Settings.Top = Top;
+        PortableData.SaveSettings();
+    }
+
+    private void DragPanel()
+    {
+        var x = Left; var y = Top;
+        BeginAnimation(LeftProperty, null); BeginAnimation(TopProperty, null);
+        Left = x; Top = y;
+        try { DragMove(); }
+        catch (InvalidOperationException) { return; }
+        SavePosition();
+    }
+
+    private void PillDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        _pillPressed = true;
+        _pressPosition = e.GetPosition(this);
+        Pill.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void PillMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_pillPressed || e.LeftButton != MouseButtonState.Pressed) return;
+        var p = e.GetPosition(this);
+        if (Math.Abs(p.X - _pressPosition.X) <= SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(p.Y - _pressPosition.Y) <= SystemParameters.MinimumVerticalDragDistance) return;
+        _pillPressed = false;
+        Pill.ReleaseMouseCapture();
+        DragPanel();
+        e.Handled = true;
+    }
+
+    private void PillUp(object sender, MouseButtonEventArgs e)
+    {
+        var click = _pillPressed;
+        _pillPressed = false;
+        if (Pill.IsMouseCaptured) Pill.ReleaseMouseCapture();
+        if (click) Expand();
+        e.Handled = true;
+    }
+
+    private void HeaderDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+        var element = e.OriginalSource as DependencyObject;
+        while (element != null)
+        {
+            if (element is Button || element is TextBox) return;
+            element = VisualTreeHelper.GetParent(element);
+        }
+        DragPanel();
+        e.Handled = true;
+    }
+
+    private void TogglePin()
+    {
+        _pinned = !_pinned;
+        PortableData.Settings.Pinned = _pinned;
+        PinButton.Content = _pinned ? "\uE77A" : "\uE718";
+        PortableData.SaveSettings();
+    }
+
+    private void PinClick(object sender, RoutedEventArgs e) => TogglePin();
+    private void SettingsClick(object sender, RoutedEventArgs e) => Navigate("settings");
+    private void CollapseClick(object sender, RoutedEventArgs e) => Collapse();
+
+    private static void OpenUrl(string target)
+    {
+        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
+        catch (Exception ex) { PortableData.Log("LAUNCH", ex.Message); }
+    }
+}
