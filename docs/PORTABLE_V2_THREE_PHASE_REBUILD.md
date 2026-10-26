@@ -115,3 +115,11 @@ Acceptance gate C:
 4. Keep the last known baseline accessible in Git history and mark source that can be reused with a short rationale. Avoid transplanting problematic window lifecycle and heavy synchronous timers.
 5. Progress report at each gate: screenshots, observed behavior, actual CPU/RAM measurements, bugs and fixes, portable artifact SHA-256, and unresolved blockers.
 6. A failed or unsupported module must be hidden or expose an accurate disabled/error state; it must never simulate success.
+
+## Reuse / discard boundary
+
+- **Reuse only after verification:** arithmetic/date calculators, SQLite repository access patterns (with new injected portable path and schema migration), Open-Meteo JSON parsing/cache protocol, Windows media-session API adapter, WLAN enumeration, and credential encryption mechanism. Retain code behind interfaces and add tests before integrating into the new UI.
+- **Rewrite rather than patch:** `IslandWindow` activation/fullscreen logic, global exception swallowing, dashboard grid markup/style system, nav/header composition, view lifecycle/timer orchestration and legacy coupled static service wiring.
+- **Leave out until demonstrated by the references:** camera mirror, Google/Microsoft calendar OAuth, decorative system telemetry and ancillary modules that do not have an observable interaction in the supplied video. Existing code may remain archived but must not run in the portable product.
+- **Repository hygiene:** remove tracked legacy `release/win-x64` binaries and dated source archives from the rebuild source tree, preserve provenance via Git history, and publish versioned runtime-specific ZIPs as CI artifacts/releases. Do not bundle Linux/macOS SQLite assets into a Windows-only portable package when publish trimming can safely exclude them.
+- **Portable documentation:** distinguish an executable that runs without installing from fully portable *data*. The new data root must be explicit and testable; avoid silently using `%LOCALAPPDATA%` unless the user explicitly selects installed-mode storage.
