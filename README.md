@@ -30,7 +30,7 @@ To enable optional calendar sync, create a Google Cloud OAuth Desktop client (en
 
 ## Latest automated Windows installer (2026-10-26)
 
-The latest successful Windows Actions run is [40275086222](https://github.com/Hakkam/AetherIsland/actions/runs/40275086222) at source commit `203285e76648eb63bfff0e1697d8d8ab584e2645`. All release steps completed successfully, including .NET 10 Release build, unit tests, Inno Setup compilation, self-contained portable packaging, and artifact upload.
+The latest successful Windows Actions run is [40277370783](https://github.com/Hakkam/AetherIsland/actions/runs/40277370783) at source commit `87be641fc7df17b3ef827e963e3f0638b210111f`. All release steps completed successfully, including .NET 10 Release build, unit tests, Inno Setup compilation, self-contained portable packaging, and artifact upload.
 
 **Download:** open the run's **Artifacts** section and download `AetherIsland-Windows-x64`. The archive contains `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`. CI artifacts have time-limited retention and may require signing into GitHub.
 
@@ -39,3 +39,11 @@ This build incorporates improvements to AI polling/alerts, idle screen-time acco
 The installer is **unsigned**. Compilation and passing unit tests do not prove that the application works on your hardware. Live Windows UI, weather/network/media/camera hardware, OAuth, OpenAI Admin quota and Arabic RTL must be validated locally before claiming production acceptance. Windows SmartScreen may display an unknown-publisher warning; verify the repository and artifact before executing software.
 
 Do not download the legacy `release/AetherIsland-manual-win-x64.zip` committed with the initial source if you need the most recent package.
+
+## Tray, drag and installer validation
+
+The latest [Windows build and installer checks](https://github.com/Hakkam/AetherIsland/actions/runs/40277370783) succeeded with 0 build errors, 0 warnings and 27/27 tests. Inno Setup and manual installers both passed actual Windows-runner install/uninstall checks; EXE removal, matching startup-entry removal and preservation of user data were verified.
+
+Right-click the tray icon for Open, Pin/Unpin, Reset position, Refresh AI usage, Check for updates, Settings, and Exit. Drag the collapsed pill to move it without opening it, or drag the expanded `⠿` grip or empty navigation rail. Position persists across restarts and can be reset from the tray. The executable, installer, tray, Settings and Onboarding now use a shared multi-resolution app icon. Update checking compares only official published GitHub Releases; it never silently installs a binary.
+
+Interactive drag/click/animation behavior and icon appearance on actual user hardware still need local visual verification. Details: [installation, icon, tray and dragging audit](docs/INSTALL_TRAY_DRAG_VERIFICATION.md).
