@@ -91,10 +91,11 @@ public sealed class OAuthCalendarProvider
             query["prompt"] = "consent";
         }
 
-        Process.Start(new ProcessStartInfo(authorization + "?" + QueryString(query))
+        if (Process.Start(new ProcessStartInfo(authorization + "?" + QueryString(query))
         {
             UseShellExecute = true
-        }) ?? throw new InvalidOperationException("Could not open system browser");
+        }) is null)
+            throw new InvalidOperationException("Could not open system browser");
 
         // The socket is already bound before opening the browser; state and PKCE
         // prevent redirect injection or code substitution.
