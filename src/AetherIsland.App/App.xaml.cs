@@ -70,7 +70,7 @@ public partial class App : Application
         {
             switch (name)
             {
-                case "toggle": ToggleRequested?.Invoke(); break;
+                case "toggle": if (CurrentMainWindow is IslandWindow toggleWindow) toggleWindow.Toggle(); break;
                 case "ai": if (CurrentMainWindow is IslandWindow w) w.NavigateTo("ai"); break;
                 case "shelf": if (CurrentMainWindow is IslandWindow w2) w2.NavigateTo("fileshelf"); break;
                 case "timer": if (CurrentMainWindow is IslandWindow w3) w3.ToggleTimer(); break;
@@ -118,8 +118,11 @@ public partial class App : Application
         menu.Items.Add(Item(Loc.T("tray.open"), (_, _) => (island as IslandWindow)?.Expand()));
         menu.Items.Add(Item(Loc.T("tray.pin"), (_, _) =>
             (island as IslandWindow)?.SetPinned(!AppServices.Settings.Behavior.Pinned)));
+        menu.Items.Add(Item(Loc.T("tray.resetPosition"), (_, _) =>
+            (island as IslandWindow)?.ResetPosition()));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(Loc.T("tray.refreshAi"), (_, _) => _ = AppServices.Ai.RefreshAsync()));
+        menu.Items.Add(Item(Loc.T("tray.checkUpdates"), async (_, _) => await CheckForUpdatesAsync()));
         menu.Items.Add(Item(Loc.T("tray.settings"), (_, _) => SettingsWindow.ShowOnce()));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(Loc.T("common.exit"), (_, _) => Shutdown()));
@@ -129,5 +132,35 @@ public partial class App : Application
         {
             if (island is IslandWindow iw) iw.Toggle();
         });
+    }
+
+    private static async Task CheckForUpdatesAsync()
+    {
+        try
+        {
+            var result = await AppUpdateService.CheckAsync();
+            switch (result.State)
+            {
+                case UpdateCheckState.UpdateAvailable:
+                    if (MessageBox.Show(Loc.TF("tray.updateAvailable", result.LatestVersion),
+                        "Aether Island", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                            "https://github.com/Hakkam/AetherIsland/releases/latest") { UseShellExecute = true });
+                    break;
+                case UpdateCheckState.UpToDate:
+                    MessageBox.Show(Loc.T("tray.upToDate"), "Aether Island", MessageBoxButton.OK, MessageBoxImage.Information);
+                    break;
+                case UpdateCheckState.NoRelease:
+                    MessageBox.Show(Loc.T("tray.noRelease"), "Aether Island", MessageBoxButton.OK, MessageBoxImage.Information);
+                    break;
+                default:
+                    MessageBox.Show(Loc.T("tray.updateFailed"), "Aether Island", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    break;
+            }
+        }
+        catch
+        {
+            MessageBox.Show(Loc.T("tray.updateFailed"), "Aether Island", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 }

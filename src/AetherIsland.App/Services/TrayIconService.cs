@@ -13,7 +13,6 @@ namespace AetherIsland.App.Services;
 public sealed class TrayIconService : IDisposable
 {
     private const int WM_TRAY = 0x8000;              // WM_APP
-    private const int WM_TASKBARCREATED = 0x001C;    // TaskbarCreated (registered)
     private const int NIM_ADD = 0x0, NIM_MODIFY = 0x1, NIM_DELETE = 0x2;
     private const int NIF_MESSAGE = 0x1, NIF_ICON = 0x2, NIF_TIP = 0x4, NIF_INFO = 0x10;
 
@@ -75,7 +74,15 @@ public sealed class TrayIconService : IDisposable
         _hwnd = _source.Handle;
         _source.AddHook(WndProc);
 
-        _icon = Infrastructure.IconFactory.CreateAppIcon(32);
+        // Same embedded icon for Explorer, shortcuts, installer and tray.
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(exe))
+                _icon = System.Drawing.Icon.ExtractAssociatedIcon(exe);
+        }
+        catch { /* Use the generated fallback on extraction failure. */ }
+        _icon ??= Infrastructure.IconFactory.CreateAppIcon(32);
         Add();
     }
 
@@ -97,14 +104,16 @@ public sealed class TrayIconService : IDisposable
                     handled = true;
                     break;
                 case 0x0205: // WM_RBUTTONUP
+                case 0x007B: // WM_CONTEXTMENU
                     ShowMenu();
                     handled = true;
                     break;
             }
         }
-        else if (msg == WM_TASKBARCREATED && _taskbarCreatedMsg == (uint)msg)
+        else if (_taskbarCreatedMsg != 0 && (uint)msg == _taskbarCreatedMsg)
         {
-            // Explorer restarted — re-add the icon
+            // Explorer broadcasts the registered TaskbarCreated message on restart.
+            _added = false;
             Add();
             handled = true;
         }
@@ -113,11 +122,9 @@ public sealed class TrayIconService : IDisposable
 
     private void ShowMenu()
     {
-        if (_menu is null) return;
-        GetCursorPos(out var p);
-        _menu.Placement = System.Windows.Controls.Primitives.PlacementMode.AbsolutePoint;
-        _menu.HorizontalOffset = p.X;
-        _menu.VerticalOffset = p.Y;
+        if (_menu is null || _menu.IsOpen) return;
+        // WPF MousePoint is DPI-aware; absolute GetCursorPos is in physical pixels.
+        _menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
         _menu.IsOpen = true;
     }
 

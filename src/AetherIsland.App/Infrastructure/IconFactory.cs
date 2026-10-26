@@ -1,6 +1,7 @@
 using System.Windows.Media.Imaging;
 using System.Windows;
 using System.Windows.Media;
+using System.Runtime.InteropServices;
 
 namespace AetherIsland.App.Infrastructure;
 
@@ -35,17 +36,27 @@ public static class IconFactory
             using var innerPath = RoundedRect(inner, ih / 2f);
             g.FillPath(white, innerPath);
         }
-        return System.Drawing.Icon.FromHandle(bmp.GetHicon());
+        var handle = bmp.GetHicon();
+        try
+        {
+            using var borrowed = System.Drawing.Icon.FromHandle(handle);
+            return (System.Drawing.Icon)borrowed.Clone();
+        }
+        finally { DestroyIcon(handle); }
     }
 
     public static BitmapSource CreateIconSource(int size = 32)
     {
-        var icon = CreateAppIcon(size);
+        using var icon = CreateAppIcon(size);
         var src = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
             icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
         src.Freeze();
         return src;
     }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
 
     private static System.Drawing.Drawing2D.GraphicsPath RoundedRect(System.Drawing.RectangleF r, float radius)
     {
