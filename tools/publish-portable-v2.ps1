@@ -11,6 +11,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Portable V2 publish failed' }
 $exe = Join-Path $output 'AetherIsland.exe'
 if (!(Test-Path -LiteralPath $exe)) { throw 'Portable executable was not created' }
 Set-Content -LiteralPath (Join-Path $output 'portable.flag') -Value 'Aether Island Portable V2'
+# Keep a double-click preview/updater alongside the executable, not in user Data.
+foreach ($launcher in @('Preview-AetherIsland.ps1', 'Preview-AetherIsland.cmd')) {
+    Copy-Item -LiteralPath (Join-Path $root "tools/$launcher") -Destination (Join-Path $output $launcher) -Force
+}
 @'
 AETHER ISLAND PORTABLE V2 — Windows 10/11 x64
 Extract the entire ZIP before using it. Double-click AetherIsland.exe.

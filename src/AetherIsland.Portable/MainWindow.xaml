@@ -18,15 +18,21 @@
    Background="#111419" Margin="3" Visibility="Collapsed">
    <Grid>
     <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Grid Background="Transparent" MouseLeftButtonDown="HeaderDown">
+    <Grid Background="Transparent">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <StackPanel x:Name="Navigation" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0"/>
+     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+       <TextBlock Text="⠿" Foreground="#A8B0C2" Cursor="SizeAll" FontSize="17" FontWeight="Bold"
+        VerticalAlignment="Center" ToolTip="Drag the island" MouseLeftButtonDown="HeaderDown" Margin="0,0,7,0"/>
+       <StackPanel x:Name="Navigation" Orientation="Horizontal" VerticalAlignment="Center"/>
+       <TextBlock x:Name="ModuleTitle" Text="Dashboard" Foreground="#B7C2D2"
+        VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11" FontWeight="SemiBold"/>
+      </StackPanel>
      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
       <TextBlock x:Name="HeaderClock" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,10,0"/>
       <TextBlock x:Name="HeaderDate" VerticalAlignment="Center" FontSize="10" Foreground="#8D97A7" Margin="0,0,12,0"/>
-      <Button x:Name="PinButton" Content="&#xE718;" FontFamily="Segoe MDL2 Assets" ToolTip="Pin panel" Click="PinClick" Background="Transparent" Margin="1"/>
-      <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" ToolTip="Settings" Click="SettingsClick" Background="Transparent" Margin="1"/>
-      <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" ToolTip="Collapse" Click="CollapseClick" Background="Transparent" Margin="1"/>
+      <Button x:Name="PinButton" Content="Pin" ToolTip="Pin panel" Click="PinClick" Background="Transparent" Margin="1"/>
+      <Button x:Name="SettingsButton" Content="Settings" ToolTip="Settings" Click="SettingsClick" Background="Transparent" Margin="1"/>
+      <Button x:Name="CollapseButton" Content="Close" ToolTip="Collapse" Click="CollapseClick" Background="Transparent" Margin="1"/>
      </StackPanel>
     </Grid>
     <Border Grid.Row="1" Margin="10,0,10,11" Background="#15191F" CornerRadius="11">

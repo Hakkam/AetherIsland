@@ -28,12 +28,10 @@ public partial class MainWindow : Window
     private readonly SmtcMediaWatcher _media = new();
     private bool _mediaStarted;
     private readonly ActivityTracker _activity = new();
-    private readonly Dictionary<string, string> _glyphs = new()
+    private readonly string[] _sections =
     {
-        ["dashboard"] = "\uE80F", ["screen"] = "\uE9D9", ["media"] = "\uE768",
-        ["shelf"] = "\uE8B7", ["tasks"] = "\uE8FD", ["notes"] = "\uE70B",
-        ["focus"] = "\uE916", ["weather"] = "\uE753", ["network"] = "\uE701",
-        ["ai"] = "\uE8B2"
+        "dashboard", "screen", "media", "shelf", "tasks", "notes",
+        "focus", "weather", "network", "ai"
     };
     private readonly Dictionary<string, string> _titles = new()
     {
@@ -47,7 +45,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _pinned = PortableData.Settings.Pinned;
-        PinButton.Content = _pinned ? "\uE77A" : "\uE718";
+        PinButton.Content = Iconography.Draw(_pinned ? "pinned" : "pin", 14);
+        SettingsButton.Content = Iconography.Draw("settings", 14);
+        CollapseButton.Content = Iconography.Draw("collapse", 14);
         var wa = SystemParameters.WorkArea;
         Left = PortableData.Settings.Left ?? wa.Left + (wa.Width - PillWidth) / 2;
         Top = PortableData.Settings.Top ?? wa.Top + 7;
@@ -108,16 +108,10 @@ public partial class MainWindow : Window
 
     private void BuildNavigation()
     {
-        foreach (var (id, glyph) in _glyphs)
+        foreach (var id in _sections)
         {
-            var button = new Button
-            {
-                Content = glyph, FontFamily = new FontFamily("Segoe MDL2 Assets"),
-                FontSize = 13, Width = 34, Height = 29, Padding = new Thickness(0),
-                Margin = new Thickness(1, 0, 1, 0),
-                Background = Brushes.Transparent, ToolTip = _titles[id],
-                Tag = id
-            };
+            var button = Iconography.Button(id, _titles[id], 34);
+            button.Tag = id;
             button.Click += (_, _) => Navigate(id);
             Navigation.Children.Add(button);
             _buttons[id] = button;
@@ -127,6 +121,7 @@ public partial class MainWindow : Window
     private void Navigate(string name)
     {
         _current = name;
+        ModuleTitle.Text = _titles.GetValueOrDefault(name, "Aether Island");
         foreach (var (id, button) in _buttons)
             button.Background = id == name
                 ? new SolidColorBrush(Color.FromRgb(49, 57, 71)) : Brushes.Transparent;
@@ -185,22 +180,24 @@ public partial class MainWindow : Window
 
     private void AnimateWindow(double width, double height, double x, double y)
     {
-        var fromW = Width; var fromH = Height; var fromX = Left; var fromY = Top;
-        BeginAnimation(WidthProperty, null); BeginAnimation(HeightProperty, null);
-        BeginAnimation(LeftProperty, null); BeginAnimation(TopProperty, null);
+        // Layered WPF windows can report stale hit-test geometry during
+        // Width/Height dependency-property animations. Snap the HWND to its
+        // final bounds first; animate only panel content opacity.
+        BeginAnimation(WidthProperty, null);
+        BeginAnimation(HeightProperty, null);
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
         var area = SystemParameters.WorkArea;
         x = Math.Clamp(x, area.Left, Math.Max(area.Left, area.Right - width));
         y = Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - height));
         Width = width; Height = height; Left = x; Top = y;
-        if (PortableData.Settings.ReducedMotion) return;
-        var t = TimeSpan.FromMilliseconds(185);
-        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        DoubleAnimation From(double a, double b) => new(a, b, t)
-        { EasingFunction = ease, FillBehavior = FillBehavior.Stop };
-        BeginAnimation(WidthProperty, From(fromW, width));
-        BeginAnimation(HeightProperty, From(fromH, height));
-        BeginAnimation(LeftProperty, From(fromX, x));
-        BeginAnimation(TopProperty, From(fromY, y));
+        UpdateLayout();
+        if (!PortableData.Settings.ReducedMotion)
+        {
+            var content = _expanded ? (UIElement)Panel : Pill;
+            content.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.4, 1.0,
+                TimeSpan.FromMilliseconds(150)) { FillBehavior = FillBehavior.Stop });
+        }
     }
 
     private void ClampToVisibleMonitor()
@@ -263,12 +260,8 @@ public partial class MainWindow : Window
     private void HeaderDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left) return;
-        var element = e.OriginalSource as DependencyObject;
-        while (element != null)
-        {
-            if (element is Button || element is TextBox) return;
-            element = VisualTreeHelper.GetParent(element);
-        }
+        // Only the explicit drag grip handles mouse-down; tab clicks never bubble
+        // into DragMove and cannot be swallowed by a parent grid.
         DragPanel();
         e.Handled = true;
     }
@@ -277,7 +270,7 @@ public partial class MainWindow : Window
     {
         _pinned = !_pinned;
         PortableData.Settings.Pinned = _pinned;
-        PinButton.Content = _pinned ? "\uE77A" : "\uE718";
+        PinButton.Content = Iconography.Draw(_pinned ? "pinned" : "pin", 14);
         PortableData.SaveSettings();
     }
 

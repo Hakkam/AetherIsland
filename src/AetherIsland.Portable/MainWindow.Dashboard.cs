@@ -60,8 +60,13 @@ public partial class MainWindow
             ("\uE8B2", "Battery settings", "ms-settings:batterysaver")
         })
         {
-            var button = Ui.Button(glyph, () => OpenUrl(uri), name, 17);
-            button.FontFamily = new FontFamily("Segoe MDL2 Assets");
+            var button = Iconography.Button(name switch
+            {
+                "Wi-Fi settings" => "network", "Bluetooth settings" => "bluetooth",
+                "Sound settings" => "volume", "Display settings" => "screen",
+                "Night light" => "weather", _ => "settings"
+            }, name, 51);
+            button.Click += (_, _) => OpenUrl(uri);
             button.Width = 51;
             button.Height = 46;
             toggles.Children.Add(button);
@@ -79,8 +84,13 @@ public partial class MainWindow
             ("\uE7F8", "Task mgr", "taskmgr.exe")
         })
         {
-            var button = Ui.Button(icon, () => OpenUrl(target), label, 16);
-            button.FontFamily = new FontFamily("Segoe MDL2 Assets");
+            var button = Iconography.Button(label switch
+            {
+                "Explorer" => "shelf", "Downloads" => "download",
+                "Calculator" => "dashboard", "Notepad" => "notes",
+                "Settings" => "settings", _ => "screen"
+            }, label, 58);
+            button.Click += (_, _) => OpenUrl(target);
             button.Width = 58;
             button.Height = 48;
             apps.Children.Add(button);
