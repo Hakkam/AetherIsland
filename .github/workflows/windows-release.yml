@@ -33,6 +33,33 @@ jobs:
       - name: Create portable self-contained release
         shell: pwsh
         run: ./tools/publish-portable-v2.ps1
+      - name: Launch portable app and record idle resource sample
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path 'release/portable-v2/win-x64/AetherIsland.exe').Path
+          $folder = Split-Path $exe -Parent
+          $proc = $null
+          try {
+            $proc = Start-Process -FilePath $exe -WorkingDirectory $folder -PassThru
+            Start-Sleep -Seconds 8
+            $proc.Refresh()
+            if ($proc.HasExited) { throw "Portable V2 exited on launch with code $($proc.ExitCode)" }
+            if (!(Test-Path (Join-Path $folder 'Data'))) { throw 'Portable data folder was not created beside EXE' }
+            $startCpu = $proc.TotalProcessorTime.TotalSeconds
+            $started = [DateTime]::UtcNow
+            Start-Sleep -Seconds 15
+            $proc.Refresh()
+            if ($proc.HasExited) { throw "Portable V2 exited during idle with code $($proc.ExitCode)" }
+            $elapsed = [Math]::Max(1, ([DateTime]::UtcNow - $started).TotalSeconds)
+            $cpu = [Math]::Max(0, ($proc.TotalProcessorTime.TotalSeconds - $startCpu)) / $elapsed / [Environment]::ProcessorCount * 100
+            $mb = [Math]::Round($proc.WorkingSet64 / 1MB, 1)
+            Write-Host "Windows runner 15-second idle sample: mean process CPU $([Math]::Round($cpu, 2))%; working set $mb MiB"
+            Write-Host 'Runner-specific observations: not Acer laptop benchmarks and not interactive UI acceptance'
+          }
+          finally {
+            if ($proc -and !$proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
       - name: Inspect portable output
         shell: pwsh
         run: |
