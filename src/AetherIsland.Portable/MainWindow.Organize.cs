@@ -28,8 +28,8 @@ public partial class MainWindow
         drop.Child = new TextBlock
         {
             Text = "Drop files here · paths saved locally",
-            Foreground = Ui.Dim, HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
+            Foreground = Ui.Dim, HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+            VerticalAlignment = System.Windows.VerticalAlignment.Center
         };
         drop.DragOver += (_, e) =>
         {
@@ -98,7 +98,7 @@ public partial class MainWindow
         foreach (var task in _tasks)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 2, 0, 2) };
-            var done = new CheckBox { IsChecked = task.Done, VerticalAlignment = VerticalAlignment.Center,
+            var done = new CheckBox { IsChecked = task.Done, VerticalAlignment = System.Windows.VerticalAlignment.Center,
                 Width = 22 };
             done.Checked += (_, _) => { task.Done = true; PortableData.Save("tasks.json", _tasks); };
             done.Unchecked += (_, _) => { task.Done = false; PortableData.Save("tasks.json", _tasks); };
