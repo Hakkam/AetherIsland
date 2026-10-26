@@ -57,3 +57,12 @@ The source includes a native public-client PKCE implementation for Google Calend
 - **Security:** refreshed SQLite dependency versions from known vulnerable 2.1.11; restore/build audit returned no warnings in CI.
 - **Remaining acceptance:** run the installer and application on a real Windows desktop, compare visual placement and transitions against the reference media, confirm camera permissions/device compatibility and external OAuth/AI credentials; verify Arabic RTL and multi-display interaction, media sessions, network toggles, privacy controls, shutdown/restart and accessibility. These are not proven by a CI build.
 - **Provider scope:** AI usage intentionally includes only providers with available verified quota. Subscription limits not officially available remain excluded instead of fabricated.
+
+## Follow-up source corrections and Windows release — 2026-10-26
+
+- Fixed simultaneous AI refresh attempts and repeated monthly quota warning notifications. Quota alert events now actually reach both the tray and compact island notifications.
+- Fixed screen-time idle accounting and correct attribution when a foreground session spans midnight.
+- Added a safe dashboard fallback if all user-visible navigation modules are hidden.
+- Updated README and committed a detailed reference-to-implementation acceptance audit.
+- **Latest successful Windows build:** [run 40275086222](https://github.com/Hakkam/AetherIsland/actions/runs/40275086222), source revision `203285e76648eb63bfff0e1697d8d8ab584e2645`. Build, unit-test, Inno Setup and artifact-upload steps all concluded successfully. The updated `AetherIsland-Windows-x64` artifact includes Setup.exe and a self-contained portable ZIP.
+- **Remaining, unchanged:** signed distribution and hardware, external-account, visual-reference and accessibility acceptance on real Windows computers. This audit does not claim production completion.
