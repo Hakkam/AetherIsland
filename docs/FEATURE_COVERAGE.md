@@ -46,3 +46,14 @@ Statuses distinguish source coverage from interactive acceptance. The Windows De
 ## Calendar OAuth implementation notes
 
 The source includes a native public-client PKCE implementation for Google Calendar and Microsoft Graph. Configure OAuth desktop application client IDs in Settings; authorize each calendar from the Calendar module. Google desktop clients use loopback redirect `http://127.0.0.1:<ephemeral-port>/`; Microsoft desktop registrations should permit `http://localhost` on the mobile/desktop platform. Token renewal and secure storage are implemented, but interactive consent and provider-specific policy approval still require user validation on Windows. No application secrets are committed. Provider API sources: Google Calendar events and Microsoft Graph calendarView.
+
+## Verified CI evidence — 2026-10-26
+
+- **Source revision:** `2b5e0880d54f9003a880cef0ae6119b5e1eb1fea`.
+- **Windows runner:** [GitHub Actions run 40272645652](https://github.com/Hakkam/AetherIsland/actions/runs/40272645652) — conclusion `success`.
+- **Build:** .NET 10 Release, `0 Warning(s)`, `0 Error(s)`.
+- **Automated unit tests:** `Total tests: 27`, `Passed: 27`.
+- **Packaging:** Inno Setup `AetherIsland-Setup-win-x64.exe` + self-contained `AetherIsland-Portable-win-x64.zip`, uploaded as `AetherIsland-Windows-x64`.
+- **Security:** refreshed SQLite dependency versions from known vulnerable 2.1.11; restore/build audit returned no warnings in CI.
+- **Remaining acceptance:** run the installer and application on a real Windows desktop, compare visual placement and transitions against the reference media, confirm camera permissions/device compatibility and external OAuth/AI credentials; verify Arabic RTL and multi-display interaction, media sessions, network toggles, privacy controls, shutdown/restart and accessibility. These are not proven by a CI build.
+- **Provider scope:** AI usage intentionally includes only providers with available verified quota. Subscription limits not officially available remain excluded instead of fabricated.
