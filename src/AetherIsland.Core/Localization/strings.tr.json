@@ -408,7 +408,13 @@
     "focusMode": "Odak modu",
     "refreshAi": "Yapay zekâ kullanımını yenile",
     "settings": "Ayarlar",
-    "exit": "Çıkış"
+    "exit": "Çıkış",
+    "resetPosition": "Adanın konumunu sıfırla",
+    "checkUpdates": "Güncellemeleri denetle",
+    "upToDate": "En son yayımlanan sürümü kullanıyorsunuz.",
+    "noRelease": "Henüz yayımlanmış bir GitHub sürümü yok. Actions dosyaları otomatik güncelleme değildir.",
+    "updateAvailable": "Aether Island {0} mevcut. Resmi sürüm sayfası açılsın mı?",
+    "updateFailed": "GitHub sürümleri kontrol edilemedi. İnternet bağlantınızı kontrol edin."
   },
   "notif": {
     "timerDone": "Süreç bitti",

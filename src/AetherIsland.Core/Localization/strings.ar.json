@@ -408,7 +408,13 @@
     "focusMode": "وضع التركيز",
     "refreshAi": "تحديث استخدام الذكاء الاصطناعي",
     "settings": "الإعدادات",
-    "exit": "خروج"
+    "exit": "خروج",
+    "resetPosition": "إعادة الشريط إلى موضعه الأصلي",
+    "checkUpdates": "التحقق من التحديثات",
+    "upToDate": "أنت تستخدم أحدث إصدار منشور.",
+    "noRelease": "لا يوجد إصدار منشور في GitHub Releases حتى الآن. ملفات GitHub Actions ليست تحديثات تلقائية.",
+    "updateAvailable": "يتوفر إصدار Aether Island {0}. هل تريد فتح صفحة الإصدار الرسمية؟",
+    "updateFailed": "تعذر التحقق من إصدارات GitHub. تحقق من اتصال الإنترنت وحاول مجددًا."
   },
   "notif": {
     "timerDone": "انتهى المؤقت",

@@ -408,7 +408,13 @@
     "focusMode": "Focus mode",
     "refreshAi": "Refresh AI usage",
     "settings": "Settings",
-    "exit": "Exit"
+    "exit": "Exit",
+    "resetPosition": "Reset island position",
+    "checkUpdates": "Check for updates",
+    "upToDate": "You are using the latest published release.",
+    "noRelease": "There is no published GitHub Release yet. Actions build artifacts are not automatic updates.",
+    "updateAvailable": "Aether Island {0} is available. Open its official release page?",
+    "updateFailed": "Unable to check GitHub Releases. Check your internet connection and try again."
   },
   "notif": {
     "timerDone": "Timer finished",
