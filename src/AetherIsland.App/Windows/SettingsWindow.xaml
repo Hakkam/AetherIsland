@@ -158,6 +158,18 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <!-- ===== Calendar OAuth (public desktop client IDs, no client secrets) ===== -->
+                <TextBlock Text="Calendar OAuth connections" Style="{StaticResource SectionHeader}" />
+                <TextBlock Text="Register a desktop OAuth client with Google Cloud or Microsoft Entra. These IDs are public; the tokens are protected by Windows DPAPI." TextWrapping="Wrap" Style="{DynamicResource Muted}" Margin="0,0,0,8" />
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Text="Google desktop client ID" Style="{StaticResource SettingLabel}" />
+                    <TextBox Text="{Binding S.Calendar.GoogleClientId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnChanged" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Text="Microsoft desktop client ID" Style="{StaticResource SettingLabel}" />
+                    <TextBox Text="{Binding S.Calendar.MicrosoftClientId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="OnChanged" />
+                </StackPanel>
+
                 <!-- ===== AI providers ===== -->
                 <TextBlock x:Name="AiSectionHeader" Text="{Binding AiProvidersTitle}" Style="{StaticResource SectionHeader}" />
                 <ItemsControl ItemsSource="{Binding ProviderRows}">

@@ -126,6 +126,12 @@ public partial class CalendarViewModel : ObservableObject, ILifecycleAware
     [ObservableProperty] private string _calendarStatus = "";
     public string SourceUrlHint => Loc.T("calendar.icsUrl");
     public string AddUrlLabel => Loc.T("calendar.addUrl");
+    public string ConnectGoogleLabel => Loc.T("calendar.connectGoogle");
+    public string ConnectMicrosoftLabel => Loc.T("calendar.connectMicrosoft");
+    public string DisconnectGoogleLabel => Loc.T("calendar.disconnectGoogle");
+    public string DisconnectMicrosoftLabel => Loc.T("calendar.disconnectMicrosoft");
+    public bool GoogleConnected => AppServices.OAuthCalendar.IsConnected(OAuthCalendarProvider.Google);
+    public bool MicrosoftConnected => AppServices.OAuthCalendar.IsConnected(OAuthCalendarProvider.Microsoft);
     [ObservableProperty] private bool _hasAccounts;
     [ObservableProperty] private ObservableCollection<WeekDayVm> _weekDays = new();
     [ObservableProperty] private string _weekTitle = Loc.T("calendar.week");
@@ -147,7 +153,7 @@ public partial class CalendarViewModel : ObservableObject, ILifecycleAware
 
     public void OnShown()
     {
-        HasAccounts = AppServices.Settings.Calendar.IcsUrls.Count > 0;
+        HasAccounts = AppServices.Settings.Calendar.IcsUrls.Count > 0 || GoogleConnected || MicrosoftConnected;
         _ = LoadAsync();
     }
 
@@ -168,13 +174,24 @@ public partial class CalendarViewModel : ObservableObject, ILifecycleAware
     private async Task LoadAsync()
     {
         var urls = AppServices.Settings.Calendar.IcsUrls;
-        HasAccounts = urls.Count > 0;
+        HasAccounts = urls.Count > 0 || GoogleConnected || MicrosoftConnected;
         Events.Clear();
-        if (urls.Count == 0) return;
+        if (!HasAccounts) return;
         try
         {
             var events = await AppServices.CalendarProvider.LoadAsync(urls);
-            foreach (var e in events.Where(e => e.End > DateTime.Now).Take(12))
+            var failures = new List<string>();
+            foreach (var provider in new[] { OAuthCalendarProvider.Google, OAuthCalendarProvider.Microsoft })
+            {
+                if (!AppServices.OAuthCalendar.IsConnected(provider)) continue;
+                var id = provider == OAuthCalendarProvider.Google
+                    ? AppServices.Settings.Calendar.GoogleClientId
+                    : AppServices.Settings.Calendar.MicrosoftClientId;
+                try { events.AddRange(await AppServices.OAuthCalendar.LoadEventsAsync(provider, id)); }
+                catch (Exception ex) { failures.Add(provider + ": " + ex.Message); }
+            }
+            CalendarStatus = string.Join(" · ", failures);
+            foreach (var e in events.Where(e => e.End > DateTime.Now).OrderBy(e => e.Start).Take(12))
                 Events.Add(new CalendarEventRowVm(e));
             if (Events.Count == 0) EmptyText = Loc.T("calendar.noEvents");
         }
@@ -228,6 +245,43 @@ public partial class CalendarViewModel : ObservableObject, ILifecycleAware
 
     [RelayCommand]
     private void Refresh() => _ = LoadAsync();
+
+    [RelayCommand]
+    private async Task ConnectGoogleAsync() => await ConnectAsync(OAuthCalendarProvider.Google);
+
+    [RelayCommand]
+    private async Task ConnectMicrosoftAsync() => await ConnectAsync(OAuthCalendarProvider.Microsoft);
+
+    private async Task ConnectAsync(string provider)
+    {
+        var id = provider == OAuthCalendarProvider.Google
+            ? AppServices.Settings.Calendar.GoogleClientId : AppServices.Settings.Calendar.MicrosoftClientId;
+        try
+        {
+            CalendarStatus = Loc.T("calendar.openBrowser");
+            await AppServices.OAuthCalendar.ConnectAsync(provider, id);
+            CalendarStatus = Loc.T("common.connected");
+            OnPropertyChanged(nameof(GoogleConnected));
+            OnPropertyChanged(nameof(MicrosoftConnected));
+            await LoadAsync();
+        }
+        catch (Exception ex) { CalendarStatus = ex.Message; }
+    }
+
+    [RelayCommand]
+    private async Task DisconnectGoogleAsync() => await DisconnectAsync(OAuthCalendarProvider.Google);
+
+    [RelayCommand]
+    private async Task DisconnectMicrosoftAsync() => await DisconnectAsync(OAuthCalendarProvider.Microsoft);
+
+    private async Task DisconnectAsync(string provider)
+    {
+        AppServices.OAuthCalendar.Disconnect(provider);
+        OnPropertyChanged(nameof(GoogleConnected));
+        OnPropertyChanged(nameof(MicrosoftConnected));
+        CalendarStatus = Loc.T("common.disconnected");
+        await LoadAsync();
+    }
 }
 
 public sealed class WeekDayVm(string dayName, int dayNumber, bool isToday)

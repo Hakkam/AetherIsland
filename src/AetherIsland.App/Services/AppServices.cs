@@ -24,6 +24,7 @@ public static class AppServices
     public static HealthService Health { get; private set; } = null!;
     public static SmtcMediaWatcher Media { get; private set; } = null!;
     public static IcsCalendarProvider CalendarProvider { get; private set; } = null!;
+    public static OAuthCalendarProvider OAuthCalendar { get; private set; } = null!;
     public static LauncherStore Launcher { get; private set; } = null!;
 
     private static bool _built;
@@ -47,6 +48,7 @@ public static class AppServices
         Health = new HealthService(new HealthLogRepository(Database), SettingsStore);
         Media = new SmtcMediaWatcher();
         CalendarProvider = new IcsCalendarProvider();
+        OAuthCalendar = new OAuthCalendarProvider(CredentialStore.GetSecret, CredentialStore.SetSecret, CredentialStore.RemoveSecret);
         Launcher = new LauncherStore();
     }
 

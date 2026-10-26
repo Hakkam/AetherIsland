@@ -12,7 +12,7 @@ Statuses distinguish source coverage from interactive acceptance. The Windows De
 | Media | Present | Windows media sessions | Session state | Implemented |
 | Weather | Present | Open-Meteo | Settings / cache | Implemented |
 | Calendar ICS | Present | Local ICS file or HTTPS feed | Settings | Implemented |
-| Google / Microsoft calendar authorization | Absent | OAuth not implemented | Absent | Not Started |
+| Google / Microsoft calendar authorization | Added connection controls | OAuth PKCE loopback and official calendar APIs | DPAPI-protected tokens | Implemented in source; requires real-account verification |
 | Productivity | Present | Foreground and idle sampling with consent | SQLite | Implemented |
 | Network | Present | WLAN and Bluetooth enumeration | Optional | Implemented |
 | System metrics | Present | Windows sampling | Optional | Implemented |
@@ -42,3 +42,7 @@ Statuses distinguish source coverage from interactive acceptance. The Windows De
 - Added removable manual-install tooling that preserves local user data by default.
 - These are source-level improvements until a successful workflow run and Windows interactive acceptance confirm the actual artifacts.
 - Existing missing requirements (Google/Microsoft OAuth, camera mirror, hardware-dependent Windows acceptance) remain incomplete. Do not mark them verified.
+
+## Calendar OAuth implementation notes
+
+The source includes a native public-client PKCE implementation for Google Calendar and Microsoft Graph. Configure OAuth desktop application client IDs in Settings; authorize each calendar from the Calendar module. Google desktop clients use loopback redirect `http://127.0.0.1:<ephemeral-port>/`; Microsoft desktop registrations should permit `http://localhost` on the mobile/desktop platform. Token renewal and secure storage are implemented, but interactive consent and provider-specific policy approval still require user validation on Windows. No application secrets are committed. Provider API sources: Google Calendar events and Microsoft Graph calendarView.

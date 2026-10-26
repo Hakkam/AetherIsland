@@ -119,6 +119,16 @@
                            VerticalAlignment="Center" Margin="8,0,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+                <Button Style="{DynamicResource GhostButton}" Content="{Binding ConnectGoogleLabel}"
+                        Command="{Binding ConnectGoogleCommand}" Padding="8,5" Margin="3,0" />
+                <Button Style="{DynamicResource GhostButton}" Content="{Binding ConnectMicrosoftLabel}"
+                        Command="{Binding ConnectMicrosoftCommand}" Padding="8,5" Margin="3,0" />
+                <Button Style="{DynamicResource GhostButton}" Content="{Binding DisconnectGoogleLabel}"
+                        Command="{Binding DisconnectGoogleCommand}" Padding="8,5" Margin="3,0"
+                        Visibility="{Binding GoogleConnected, Converter={StaticResource BoolToVis}}" />
+                <Button Style="{DynamicResource GhostButton}" Content="{Binding DisconnectMicrosoftLabel}"
+                        Command="{Binding DisconnectMicrosoftCommand}" Padding="8,5" Margin="3,0"
+                        Visibility="{Binding MicrosoftConnected, Converter={StaticResource BoolToVis}}" />
             <Button Style="{DynamicResource IconButton}" Content="&#xE72C;" Command="{Binding RefreshCommand}" />
             <Button Style="{DynamicResource GhostButton}" Content="{Binding AddIcsLabel}"
                     Command="{Binding AddIcsCommand}" Padding="10,5" FontSize="11" Margin="4,0,0,0" />
