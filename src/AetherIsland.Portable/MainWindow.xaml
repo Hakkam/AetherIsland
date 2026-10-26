@@ -1,0 +1,38 @@
+<Window x:Class="AetherIsland.Portable.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Aether Island" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize"
+ WindowStartupLocation="Manual" ShowInTaskbar="False" Topmost="True"
+ Width="188" Height="48" Background="Transparent">
+ <Grid>
+  <Border x:Name="Pill" CornerRadius="19" Background="#111419" BorderBrush="#383F4B" BorderThickness="1" Margin="3"
+   MouseLeftButtonDown="PillDown" MouseMove="PillMove" MouseLeftButtonUp="PillUp">
+   <Grid Margin="15,0">
+    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock x:Name="PillClock" Text="--:--" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+    <TextBlock Grid.Column="1" Text="  Aether Island" FontSize="10" Foreground="#9098A5" VerticalAlignment="Center"/>
+    <Ellipse Grid.Column="2" Fill="#19A8EA" Width="6" Height="6" VerticalAlignment="Center"/>
+   </Grid>
+  </Border>
+  <Border x:Name="Panel" CornerRadius="19" BorderBrush="#353A44" BorderThickness="1"
+   Background="#111419" Margin="3" Visibility="Collapsed">
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Grid Background="Transparent" MouseLeftButtonDown="HeaderDown">
+     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+     <StackPanel x:Name="Navigation" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0"/>
+     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+      <TextBlock x:Name="HeaderClock" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,10,0"/>
+      <TextBlock x:Name="HeaderDate" VerticalAlignment="Center" FontSize="10" Foreground="#8D97A7" Margin="0,0,12,0"/>
+      <Button x:Name="PinButton" Content="&#xE718;" FontFamily="Segoe MDL2 Assets" ToolTip="Pin panel" Click="PinClick" Background="Transparent" Margin="1"/>
+      <Button Content="&#xE713;" FontFamily="Segoe MDL2 Assets" ToolTip="Settings" Click="SettingsClick" Background="Transparent" Margin="1"/>
+      <Button Content="&#xE8BB;" FontFamily="Segoe MDL2 Assets" ToolTip="Collapse" Click="CollapseClick" Background="Transparent" Margin="1"/>
+     </StackPanel>
+    </Grid>
+    <Border Grid.Row="1" Margin="10,0,10,11" Background="#15191F" CornerRadius="11">
+     <ContentControl x:Name="ContentHost"/>
+    </Border>
+   </Grid>
+  </Border>
+ </Grid>
+</Window>
