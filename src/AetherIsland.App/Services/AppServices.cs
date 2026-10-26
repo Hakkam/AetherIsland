@@ -45,6 +45,15 @@ public static class AppServices
         ScreenTime = new ScreenTimeService(new ScreenTimeRepository(Database), Settings);
         Weather = new WeatherService(SettingsStore);
         Ai = new AiUsageService(SettingsStore, new CredentialProxy(CredentialStore), new PollTimer());
+        // Surface verified quota warnings to the user instead of calculating alerts
+        // without ever displaying them. The AI service performs deduplication.
+        Ai.AlertTriggered += alert =>
+        {
+            var message = $"OpenAI API monthly spend: {alert.Threshold}% of the verified limit reached";
+            if (Settings.General.ToastNotifications)
+                Notify.ShowBalloon("Aether Island · AI Usage", message);
+            Notify.ShowIslandContext("\uE7BA", message);
+        };
         Health = new HealthService(new HealthLogRepository(Database), SettingsStore);
         Media = new SmtcMediaWatcher();
         CalendarProvider = new IcsCalendarProvider();
