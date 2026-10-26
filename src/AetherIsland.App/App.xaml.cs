@@ -106,25 +106,46 @@ public partial class App : Application
     {
         var menu = new ContextMenu();
 
-        MenuItem Item(string header, RoutedEventHandler onClick, bool isChecked = false)
+        MenuItem Item(string key, string glyph, RoutedEventHandler onClick)
         {
-            var mi = new MenuItem { Header = header, IsCheckable = false };
-            if (isChecked) mi.Icon = new TextBlock { Text = "✓" };
+            var mi = new MenuItem
+            {
+                Header = Loc.T(key),
+                Tag = key,
+                Icon = new TextBlock
+                {
+                    Text = glyph,
+                    FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
+                    FontSize = 13,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
             mi.Click += onClick;
             return mi;
         }
 
-        menu.Items.Add(Item(Loc.T("tray.open"), (_, _) => (island as IslandWindow)?.Expand()));
-        menu.Items.Add(Item(Loc.T("tray.pin"), (_, _) =>
+        menu.Items.Add(Item("tray.open", "\uE8A7", (_, _) => (island as IslandWindow)?.Expand()));
+        menu.Items.Add(Item("tray.pin", "\uE718", (_, _) =>
             (island as IslandWindow)?.SetPinned(!AppServices.Settings.Behavior.Pinned)));
-        menu.Items.Add(Item(Loc.T("tray.resetPosition"), (_, _) =>
+        menu.Items.Add(Item("tray.resetPosition", "\uE7AD", (_, _) =>
             (island as IslandWindow)?.ResetPosition()));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(Loc.T("tray.refreshAi"), (_, _) => _ = AppServices.Ai.RefreshAsync()));
-        menu.Items.Add(Item(Loc.T("tray.checkUpdates"), async (_, _) => await CheckForUpdatesAsync()));
-        menu.Items.Add(Item(Loc.T("tray.settings"), (_, _) => SettingsWindow.ShowOnce()));
+        menu.Items.Add(Item("tray.refreshAi", "\uE72C", (_, _) => _ = AppServices.Ai.RefreshAsync()));
+        menu.Items.Add(Item("tray.checkUpdates", "\uE895", async (_, _) => await CheckForUpdatesAsync()));
+        menu.Items.Add(Item("tray.settings", "\uE713", (_, _) => SettingsWindow.ShowOnce()));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(Loc.T("common.exit"), (_, _) => Shutdown()));
+        menu.Items.Add(Item("common.exit", "\uE8BB", (_, _) => Shutdown()));
+
+        // The tray menu remains open across theme/language changes; refresh labels
+        // and the pin status on every right-click, without recreating native icons.
+        menu.Opened += (_, _) =>
+        {
+            menu.FlowDirection = ThemeService.FlowDirectionForCurrentLanguage();
+            foreach (var mi in menu.Items.OfType<MenuItem>())
+                if (mi.Tag is string key)
+                    mi.Header = Loc.T(key == "tray.pin" && AppServices.Settings.Behavior.Pinned
+                        ? "tray.unpin" : key);
+        };
 
         AppServices.Tray.Initialize(menu);
         AppServices.Tray.LeftClick += () => Dispatcher.Invoke(() =>
