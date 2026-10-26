@@ -10,7 +10,6 @@ public partial class App : Application
 {
     private static Mutex? _singleInstanceMutex;
     public static App? Instance { get; private set; }
-    public event Action? ToggleRequested;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -142,7 +141,7 @@ public partial class App : Application
             switch (result.State)
             {
                 case UpdateCheckState.UpdateAvailable:
-                    if (MessageBox.Show(Loc.TF("tray.updateAvailable", result.LatestVersion),
+                    if (MessageBox.Show(Loc.TF("tray.updateAvailable", result.LatestVersion ?? ""),
                         "Aether Island", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
                         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
                             "https://github.com/Hakkam/AetherIsland/releases/latest") { UseShellExecute = true });
