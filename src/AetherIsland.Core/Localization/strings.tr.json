@@ -146,7 +146,14 @@
     "pause": "Duraklat",
     "next": "Sonraki",
     "prev": "Önceki",
-    "volume": "Ses"
+    "volume": "Ses",
+    "cameraTitle": "Kamera aynası",
+    "startCamera": "Kamerayı başlat",
+    "stopCamera": "Kamerayı durdur",
+    "cameraOpening": "Kamera izni isteniyor…",
+    "cameraOn": "Canlı önizleme · yalnızca yerel",
+    "cameraPrivacy": "Kamera kapalı · açmak için tıklayın",
+    "noCamera": "Uyumlu kamera bulunamadı"
   },
   "calendar": {
     "noAccounts": "Bağlı takvim yok",

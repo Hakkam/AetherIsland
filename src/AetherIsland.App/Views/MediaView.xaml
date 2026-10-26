@@ -6,8 +6,12 @@
     </UserControl.Resources>
 
     <Grid Background="Transparent">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="265" />
+        </Grid.ColumnDefinitions>
         <!-- empty state -->
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+        <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Visibility="{Binding EmptyVisible, Converter={StaticResource BoolToVis}}">
             <TextBlock Text="&#xE8D6;" FontFamily="{DynamicResource GlyphFont}" FontSize="34"
                        Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" />
@@ -16,7 +20,7 @@
         </StackPanel>
 
         <!-- session -->
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520"
+        <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520"
                     Visibility="{Binding HasSession, Converter={StaticResource BoolToVis}}">
             <Grid HorizontalAlignment="Center" Margin="0,0,0,14">
                 <Border Width="96" Height="96" CornerRadius="12" Background="{DynamicResource Surface2Brush}">
@@ -53,5 +57,40 @@
                 </Button>
             </StackPanel>
         </StackPanel>
+        <!-- Optional local webcam mirror. Video starts only after a user click;
+             the reader is released immediately when this module is hidden. -->
+        <Border Grid.Column="1" Margin="8,4,0,4" CornerRadius="14"
+                Padding="12" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource StrokeBrush}" BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding CameraTitle}" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}"/>
+                <Border Grid.Row="1" Margin="0,10" CornerRadius="11" ClipToBounds="True"
+                        Background="{DynamicResource Surface2Brush}">
+                    <Grid>
+                        <TextBlock Text="&#xE714;" FontFamily="{DynamicResource GlyphFont}"
+                                   Foreground="{DynamicResource MutedBrush}" FontSize="32"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Image Source="{Binding CameraFrame}" Stretch="UniformToFill"
+                               RenderTransformOrigin="0.5,0.5">
+                            <Image.RenderTransform>
+                                <ScaleTransform ScaleX="-1"/>
+                            </Image.RenderTransform>
+                        </Image>
+                    </Grid>
+                </Border>
+                <TextBlock Grid.Row="2" Text="{Binding CameraStatus}" FontSize="10"
+                           TextWrapping="Wrap" Foreground="{DynamicResource Text2Brush}" Margin="0,0,0,8"/>
+                <Button Grid.Row="3" Content="{Binding CameraActionLabel}"
+                        Command="{Binding ToggleCameraCommand}"
+                        Style="{DynamicResource GhostButton}"/>
+            </Grid>
+        </Border>
     </Grid>
 </UserControl>

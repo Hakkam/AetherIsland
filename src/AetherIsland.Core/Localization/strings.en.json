@@ -146,7 +146,14 @@
     "pause": "Pause",
     "next": "Next",
     "prev": "Previous",
-    "volume": "Volume"
+    "volume": "Volume",
+    "cameraTitle": "Camera mirror",
+    "startCamera": "Start camera",
+    "stopCamera": "Stop camera",
+    "cameraOpening": "Requesting camera access…",
+    "cameraOn": "Live preview · local only",
+    "cameraPrivacy": "Camera off · click to enable",
+    "noCamera": "No compatible camera detected"
   },
   "calendar": {
     "noAccounts": "No calendar connected",

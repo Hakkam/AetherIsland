@@ -20,7 +20,7 @@ Statuses distinguish source coverage from interactive acceptance. The Windows De
 | AI monthly API spend limit | Present | OpenAI Admin limit and cost | DPAPI key / settings | Implemented |
 | Anthropic / Z.AI subscription limit cards | Excluded | No compatible verified connector in this version | Existing settings retained | Unsupported |
 | Local agent status | Present | Process and metadata detection with consent | Consent | Implemented |
-| Camera mirror | Absent | Absent | Absent | Not Started |
+| Camera mirror | Media view preview added | Windows MediaCapture + CPU frame reader; starts by user action, stops on navigation | Camera consent | Implemented in source; Windows webcam verification pending |
 | Navigation and dashboard layout editor | Present | Show/hide, order, live refresh | JSON | Implemented in source |
 | First-run setup | Present | Appearance, behavior, privacy | Settings | In Progress |
 | Installer / signed release | Source only | Framework-dependent manual ZIP and tested file-copy installer; Inno Setup source; unsigned | N/A | Installer compiler and self-contained packs unavailable |

@@ -1,4 +1,9 @@
 using System.Collections.ObjectModel;
+using Windows.Media.Capture;
+using Windows.Media.Capture.Frames;
+using Windows.Graphics.Imaging;
+using Windows.Media.MediaProperties;
+using Windows.Storage.Streams;
 using System.IO;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -15,6 +20,18 @@ namespace AetherIsland.App.ViewModels;
 public partial class MediaViewModel : ObservableObject, ILifecycleAware
 {
     private DispatcherTimer? _positionTimer;
+    private MediaCapture? _camera;
+    private MediaFrameReader? _cameraReader;
+    private int _frameProcessing;
+    private DateTime _lastCameraFrame = DateTime.MinValue;
+
+    [ObservableProperty] private BitmapSource? _cameraFrame;
+    [ObservableProperty] private bool _isCameraActive;
+    [ObservableProperty] private bool _cameraBusy;
+    [ObservableProperty] private string _cameraStatus = Loc.T("media.cameraPrivacy");
+    public string CameraTitle => Loc.T("media.cameraTitle");
+    public string CameraActionLabel => IsCameraActive ? Loc.T("media.stopCamera") : Loc.T("media.startCamera");
+    partial void OnIsCameraActiveChanged(bool value) => OnPropertyChanged(nameof(CameraActionLabel));
 
     [ObservableProperty] private bool _hasSession;
     [ObservableProperty] private string _title = "";
@@ -65,6 +82,101 @@ public partial class MediaViewModel : ObservableObject, ILifecycleAware
         AppServices.Media.Updated -= Apply;
         _positionTimer?.Stop();
         _positionTimer = null;
+        _ = StopCameraAsync();
+    }
+
+    [RelayCommand]
+    private async Task ToggleCameraAsync()
+    {
+        if (CameraBusy) return;
+        if (IsCameraActive) { await StopCameraAsync(); return; }
+        CameraBusy = true;
+        CameraStatus = Loc.T("media.cameraOpening");
+        try
+        {
+            var groups = await MediaFrameSourceGroup.FindAllAsync();
+            var group = groups.FirstOrDefault(g => g.SourceInfos.Any(s => s.SourceKind == MediaFrameSourceKind.Color));
+            if (group is null) throw new InvalidOperationException(Loc.T("media.noCamera"));
+            _camera = new MediaCapture();
+            await _camera.InitializeAsync(new MediaCaptureInitializationSettings
+            {
+                SourceGroup = group,
+                StreamingCaptureMode = StreamingCaptureMode.Video,
+                MemoryPreference = MediaCaptureMemoryPreference.Cpu,
+                SharingMode = MediaCaptureSharingMode.SharedReadOnly
+            });
+            var source = _camera.FrameSources.Values.FirstOrDefault(s => s.Info.SourceKind == MediaFrameSourceKind.Color);
+            if (source is null) throw new InvalidOperationException(Loc.T("media.noCamera"));
+            _cameraReader = await _camera.CreateFrameReaderAsync(source, MediaEncodingSubtypes.Bgra8);
+            _cameraReader.FrameArrived += CameraFrameArrived;
+            var status = await _cameraReader.StartAsync();
+            if (status != MediaFrameReaderStartStatus.Success)
+                throw new InvalidOperationException($"Camera start status: {status}");
+            AppServices.Settings.Privacy.CameraConsent = true;
+            AppServices.SettingsStore.Save(AppServices.Settings);
+            IsCameraActive = true;
+            CameraStatus = Loc.T("media.cameraOn");
+        }
+        catch (Exception ex)
+        {
+            CameraStatus = ex.Message;
+            await StopCameraAsync(preserveStatus: true);
+        }
+        finally { CameraBusy = false; }
+    }
+
+    private async void CameraFrameArrived(MediaFrameReader sender, MediaFrameArrivedEventArgs args)
+    {
+        if (Interlocked.Exchange(ref _frameProcessing, 1) != 0) return;
+        try
+        {
+            if (!IsCameraActive || (DateTime.UtcNow - _lastCameraFrame).TotalMilliseconds < 350) return;
+            _lastCameraFrame = DateTime.UtcNow;
+            using var frame = sender.TryAcquireLatestFrame();
+            var bitmap = frame?.VideoMediaFrame?.SoftwareBitmap;
+            if (bitmap is null) return;
+            using var bgra = SoftwareBitmap.Convert(bitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore);
+            using var stream = new InMemoryRandomAccessStream();
+            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+            encoder.BitmapTransform.ScaledWidth = (uint)Math.Min(bgra.PixelWidth, 320);
+            encoder.BitmapTransform.ScaledHeight = (uint)Math.Max(1, bgra.PixelHeight * (int)encoder.BitmapTransform.ScaledWidth / bgra.PixelWidth);
+            encoder.SetSoftwareBitmap(bgra);
+            await encoder.FlushAsync();
+            stream.Seek(0);
+            using var netStream = stream.AsStreamForRead();
+            using var buffer = new MemoryStream();
+            await netStream.CopyToAsync(buffer);
+            buffer.Position = 0;
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = buffer;
+            image.EndInit();
+            image.Freeze();
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (IsCameraActive) CameraFrame = image;
+            });
+        }
+        catch { /* Frames may be invalidated while the camera is stopping. */ }
+        finally { Interlocked.Exchange(ref _frameProcessing, 0); }
+    }
+
+    private async Task StopCameraAsync(bool preserveStatus = false)
+    {
+        var reader = _cameraReader;
+        _cameraReader = null;
+        if (reader is not null)
+        {
+            reader.FrameArrived -= CameraFrameArrived;
+            try { await reader.StopAsync(); } catch { }
+            reader.Dispose();
+        }
+        _camera?.Dispose();
+        _camera = null;
+        IsCameraActive = false;
+        CameraFrame = null;
+        if (!preserveStatus) CameraStatus = Loc.T("media.cameraPrivacy");
     }
 
     public void Apply(MediaSessionInfo? info)
