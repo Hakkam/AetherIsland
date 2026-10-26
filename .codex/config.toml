@@ -1,1 +1,2 @@
-notify = ['C:\Users\saifa\AppData\Local\OpenAI\Codex\runtimes\cua_node\1fb7137c46617d50\bin\node_modules\@oai\sky\bin\windows\codex-computer-use.exe', "turn-ended"]
+# Repository-local Codex settings only.
+# Keep absolute paths, user names and authentication outside version control.
