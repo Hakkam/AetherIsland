@@ -266,6 +266,33 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    /// <summary>Verifies real WPF layout and routed tab actions on the Windows runner.</summary>
+    public void VerifyShellInteractions()
+    {
+        Expand();
+        UpdateLayout();
+        if (!_expanded || Panel.Visibility != Visibility.Visible || Pill.Visibility != Visibility.Collapsed)
+            throw new InvalidOperationException("Expand failed to switch the island state.");
+        if (Width < 900 || Height < 200 || ContentHost.ActualHeight < 80)
+            throw new InvalidOperationException($"Expanded panel clipped: {Width}x{Height}, content {ContentHost.ActualHeight}.");
+        if (Navigation.Children.Count != _sections.Length)
+            throw new InvalidOperationException("Navigation button count differs from expected modules.");
+        foreach (var id in _sections)
+        {
+            var button = _buttons[id];
+            if (button.Content is not System.Windows.Controls.Viewbox)
+                throw new InvalidOperationException($"The {id} icon is not a vector control.");
+            button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, button));
+            UpdateLayout();
+            if (_current != id || ModuleTitle.Text != _titles[id] || ContentHost.Content is null)
+                throw new InvalidOperationException($"Navigation failed for {id}.");
+        }
+        Collapse();
+        UpdateLayout();
+        if (_expanded || Pill.Visibility != Visibility.Visible || Panel.Visibility != Visibility.Collapsed || Width > 220)
+            throw new InvalidOperationException("Collapse did not restore the compact pill.");
+    }
+
     private void TogglePin()
     {
         _pinned = !_pinned;

@@ -33,6 +33,24 @@ jobs:
       - name: Create portable self-contained release
         shell: pwsh
         run: ./tools/publish-portable-v2.ps1
+      - name: Exercise live WPF shell and all navigation actions
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path 'release/portable-v2/win-x64/AetherIsland.exe').Path
+          $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -ArgumentList '--ui-selfcheck' -PassThru
+          try {
+            if (!$proc.WaitForExit(25000)) { throw 'WPF UI self-check timed out' }
+            if ($proc.ExitCode -ne 0) {
+              $log = Join-Path (Split-Path $exe -Parent) 'Data/logs/app.log'
+              if (Test-Path $log) { Get-Content -LiteralPath $log -Tail 35 | Write-Host }
+              throw "WPF UI self-check failed (exit $($proc.ExitCode))"
+            }
+            Write-Host 'WPF shell expand/collapse, visible content geometry and 10 navigation button handlers passed'
+          }
+          finally {
+            if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
       - name: Launch portable app and record idle resource sample
         shell: pwsh
         run: |

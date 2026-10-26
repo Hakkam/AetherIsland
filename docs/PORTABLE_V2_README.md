@@ -66,3 +66,11 @@ multi-DPI and multi-display positioning, SMTC compatibility, network and
 weather, credential authorization, resource use and sleep/resume behavior.
 The source-only milestones and Windows CI artifacts are distinct from
 interactive visual and functional acceptance.
+
+## One-click preview instead of downloading ZIP every iteration
+
+The distribution now contains `Preview-AetherIsland.cmd` and `Preview-AetherIsland.ps1` beside `AetherIsland.exe`. Install GitHub CLI (`winget install --id GitHub.cli -e`) and run `gh auth login` **once**. Afterwards, exit the running Aether Island from the Windows notification area and double-click `Preview-AetherIsland.cmd` whenever you want the newest **successful** GitHub Actions preview. The script selects the most recent successful Windows run, downloads and checks SHA-256, updates only application files (never `Data/`), records the preview ID and launches it. When unchanged, it just launches the existing executable.
+
+A source-build alternative is running the portable project through Visual Studio with the .NET 10 SDK; no separate ZIP is needed for each edit.
+
+The opt-in `--ui-selfcheck` command-line mode exercises WPF expansion/collapse and each vector navigation button on the Windows runner. Passing that check does not certify matching pixels or real mouse/DPI behavior on a laptop.

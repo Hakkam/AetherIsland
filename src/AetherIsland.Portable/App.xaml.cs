@@ -21,6 +21,27 @@ public partial class App : System.Windows.Application
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+
+        // Explicit UI smoke mode runs only when requested by the Windows
+        // acceptance workflow. This checks actual WPF layout and routed
+        // button handlers, which compilation-only tests cannot cover.
+        if (e.Args.Any(a => string.Equals(a, "--ui-selfcheck", StringComparison.OrdinalIgnoreCase)))
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                try
+                {
+                    window.VerifyShellInteractions();
+                    PortableData.Log("UI SELF CHECK", "Passed");
+                    Shutdown(0);
+                }
+                catch (Exception ex)
+                {
+                    PortableData.Log("UI SELF CHECK", ex.ToString());
+                    Shutdown(1);
+                }
+            }), DispatcherPriority.ApplicationIdle);
+        }
     }
     protected override void OnExit(ExitEventArgs e) { _mutex?.Dispose(); base.OnExit(e); }
 }
