@@ -2,7 +2,6 @@
   <Folder Name="/src/">
     <Project Path="src/AetherIsland.Portable/AetherIsland.Portable.csproj" />
     <Project Path="src/AetherIsland.Core/AetherIsland.Core.csproj" />
-    <Project Path="src/AetherIsland.Data/AetherIsland.Data.csproj" />
     <Project Path="src/AetherIsland.Integrations/AetherIsland.Integrations.csproj" />
     <Project Path="src/AetherIsland.Windows/AetherIsland.Windows.csproj" />
   </Folder>
