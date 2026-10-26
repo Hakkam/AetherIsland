@@ -14,6 +14,10 @@ if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
 if ($source.TrimEnd('\') -eq $target.TrimEnd('\')) {
     throw 'The install destination must differ from the extracted package.'
 }
+# Prevent replacing in-use binaries during manual reinstallation.
+$running = @(Get-CimInstance Win32_Process -Filter "Name='AetherIsland.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.ExecutablePath -and [string]::Equals($_.ExecutablePath, (Join-Path $target 'AetherIsland.exe'), [StringComparison]::OrdinalIgnoreCase) })
+if ($running.Count -gt 0) { throw 'Exit Aether Island from the system tray before updating its files.' }
 New-Item -ItemType Directory -Path $target -Force | Out-Null
 Copy-Item -Path (Join-Path $source '*') -Destination $target -Recurse -Force
 Set-Content -LiteralPath (Join-Path $target '.aether-manual-install') -Value 'Aether Island manual installation' -Encoding utf8

@@ -27,6 +27,13 @@ foreach ($shortcut in @(
         }
     }
 }
+# The app registers startup under HKCU when enabled; never leave stale
+# auto-start pointing to an executable removed by manual uninstall.
+$runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+$startup = (Get-ItemProperty -LiteralPath $runKey -Name 'AetherIsland' -ErrorAction SilentlyContinue).AetherIsland
+if ([string]::Equals($startup, ('"' + $exePath + '"'), [StringComparison]::OrdinalIgnoreCase)) {
+    Remove-ItemProperty -LiteralPath $runKey -Name 'AetherIsland' -ErrorAction SilentlyContinue
+}
 Remove-Item -LiteralPath $target -Recurse -Force
 if ($RemoveUserData) {
     Remove-Item -LiteralPath (Join-Path $env:LOCALAPPDATA 'AetherIsland') -Recurse -Force -ErrorAction SilentlyContinue

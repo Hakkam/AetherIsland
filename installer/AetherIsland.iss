@@ -5,6 +5,8 @@
 AppId=AetherIsland.Desktop
 AppName=Aether Island
 AppVersion={#AppVersion}
+AppMutex=AetherIsland.SingleInstance
+SetupIconFile=..\src\AetherIsland.App\Assets\AetherIsland.ico
 DefaultDirName={localappdata}\Programs\Aether Island
 DefaultGroupName=Aether Island
 PrivilegesRequired=lowest
@@ -30,3 +32,20 @@ Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
 
 [Run]
 Filename: "{app}\AetherIsland.exe"; Description: "Launch Aether Island"; Flags: nowait postinstall skipifsilent
+
+; Remove the application's current-user autostart entry only if it points
+; to this installation. Leave %LOCALAPPDATA%\AetherIsland user data intact.
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  RunValue: String;
+  ExpectedValue: String;
+begin
+  if CurUninstallStep <> usUninstall then Exit;
+  if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'AetherIsland', RunValue) then
+  begin
+    ExpectedValue := '"' + ExpandConstant('{app}\AetherIsland.exe') + '"';
+    if CompareText(Trim(RunValue), ExpectedValue) = 0 then
+      RegDeleteValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Run', 'AetherIsland');
+  end;
+end;
