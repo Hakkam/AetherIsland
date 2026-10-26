@@ -41,6 +41,46 @@ jobs:
       - name: Create self-contained executable and Setup.exe
         shell: pwsh
         run: ./tools/package-installer.ps1 -SelfContained
+      - name: Smoke-check installation, uninstall and data preservation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = (Resolve-Path 'release/AetherIsland-Setup-win-x64.exe').Path
+          $folder = Join-Path $env:RUNNER_TEMP 'AetherIsland-Smoke-Install'
+          $manual = Join-Path $env:RUNNER_TEMP 'AetherIsland-Smoke-Manual'
+          $dataDir = Join-Path $env:LOCALAPPDATA 'AetherIsland'
+          New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
+          $marker = Join-Path $dataDir 'ci-keep-user-data.marker'
+          Set-Content -LiteralPath $marker -Value 'preserve this data'
+          $args = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$folder`" /LOG=`"$env:RUNNER_TEMP\AetherIsland-install.log`""
+          $install = Start-Process -FilePath $installer -ArgumentList $args -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Inno installer returned $($install.ExitCode)" }
+          $installedExe = Join-Path $folder 'AetherIsland.exe'
+          $uninstaller = Join-Path $folder 'unins000.exe'
+          if (!(Test-Path $installedExe) -or !(Test-Path $uninstaller)) {
+            throw 'Inno setup failed to install executable or uninstaller'
+          }
+          $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+          New-Item -Path $runKey -Force | Out-Null
+          Set-ItemProperty -Path $runKey -Name 'AetherIsland' -Value ("`"" + $installedExe + "`"")
+          $remove = Start-Process -FilePath $uninstaller -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
+          if ($remove.ExitCode -ne 0) { throw "Inno uninstaller returned $($remove.ExitCode)" }
+          if (Test-Path $installedExe) { throw 'Inno uninstall left the executable behind' }
+          if ((Get-ItemProperty -Path $runKey -Name AetherIsland -ErrorAction SilentlyContinue).AetherIsland) {
+            throw 'Inno uninstall left an obsolete startup registry value'
+          }
+          if (!(Test-Path $marker)) { throw 'Inno uninstall deleted private user data' }
+          & 'release/win-x64/Install-AetherIsland.ps1' -Destination $manual -SkipShortcuts
+          if (!(Test-Path (Join-Path $manual 'AetherIsland.exe'))) {
+            throw 'Manual install did not copy the app'
+          }
+          & 'release/win-x64/Uninstall-AetherIsland.ps1' -Destination $manual
+          if (Test-Path (Join-Path $manual 'AetherIsland.exe')) {
+            throw 'Manual uninstall did not remove the app'
+          }
+          if (!(Test-Path $marker)) { throw 'Manual uninstall deleted private user data' }
+          Remove-Item -LiteralPath $marker -Force
+          Write-Host 'Inno and manual install/uninstall smoke checks passed'
       - name: Archive portable application
         shell: pwsh
         run: |
