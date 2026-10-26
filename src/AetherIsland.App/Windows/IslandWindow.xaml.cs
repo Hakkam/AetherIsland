@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
@@ -20,6 +21,8 @@ public partial class IslandWindow : Window
     private readonly DispatcherTimer _contextTimer;
     private bool _hiddenForFullscreen;
     private string _lastLanguage = Loc.Language;
+    private bool _pillPressActive;
+    private System.Windows.Point _pillPressPoint;
 
     private const double PillWidth = 176;
     private const double PillHeight = 50;   // includes shadow margin
@@ -125,47 +128,100 @@ public partial class IslandWindow : Window
 
     private void AnimateTo(double width, double height)
     {
-        var (targetLeft, targetTop) = TargetPosition(width);
+        var (targetLeft, targetTop) = TargetPosition(width, height);
 
-        var duration = AppServices.Settings.Behavior.ReducedMotion
-            ? TimeSpan.Zero
-            : TimeSpan.FromMilliseconds(210);
+        // Animations must not keep the Left/Top dependency properties controlled
+        // after completion, or WPF's native DragMove will fail to persist movement.
+        var fromWidth = Width;
+        var fromHeight = Height;
+        var fromLeft = Left;
+        var fromTop = Top;
+        BeginAnimation(WidthProperty, null);
+        BeginAnimation(HeightProperty, null);
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
+        Width = width; Height = height; Left = targetLeft; Top = targetTop;
 
-        var wa = new DoubleAnimation(width, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-        var ha = new DoubleAnimation(height, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-        var la = new DoubleAnimation(targetLeft, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-        var ta = new DoubleAnimation(targetTop, duration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+        if (AppServices.Settings.Behavior.ReducedMotion) return;
+        var duration = TimeSpan.FromMilliseconds(210);
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        BeginAnimation(WidthProperty, wa);
-        BeginAnimation(HeightProperty, ha);
-        BeginAnimation(LeftProperty, la);
-        BeginAnimation(TopProperty, ta);
-
-        if (duration == TimeSpan.Zero)
+        DoubleAnimation Slide(double from, double to) => new(from, to, duration)
         {
-            Width = width; Height = height; Left = targetLeft; Top = targetTop;
-        }
+            EasingFunction = easing,
+            FillBehavior = FillBehavior.Stop
+        };
+        BeginAnimation(WidthProperty, Slide(fromWidth, width));
+        BeginAnimation(HeightProperty, Slide(fromHeight, height));
+        BeginAnimation(LeftProperty, Slide(fromLeft, targetLeft));
+        BeginAnimation(TopProperty, Slide(fromTop, targetTop));
     }
 
     private void PositionPill(bool instant)
     {
-        if (instant)
-        {
-            Width = PillWidth;
-            Height = PillHeight;
-            (Left, Top) = TargetPosition(PillWidth);
-        }
-        else AnimateTo(PillWidth, PillHeight);
+        if (!instant) { AnimateTo(PillWidth, PillHeight); return; }
+        BeginAnimation(WidthProperty, null);
+        BeginAnimation(HeightProperty, null);
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
+        Width = PillWidth;
+        Height = PillHeight;
+        (Left, Top) = TargetPosition(PillWidth, PillHeight);
     }
 
-    private (double left, double top) TargetPosition(double width)
+    private (double left, double top) TargetPosition(double width, double height)
     {
         var work = MonitorService.SelectedWorkArea(AppServices.Settings.Behavior.MonitorDeviceName);
         var source = PresentationSource.FromVisual(this);
         var transform = source?.CompositionTarget?.TransformFromDevice ?? System.Windows.Media.Matrix.Identity;
         var topLeft = transform.Transform(new System.Windows.Point(work.Left, work.Top));
         var bottomRight = transform.Transform(new System.Windows.Point(work.Right, work.Bottom));
-        return (topLeft.X + Math.Max(0, bottomRight.X - topLeft.X - width) / 2, topLeft.Y + 6);
+        var behavior = AppServices.Settings.Behavior;
+        var left = topLeft.X + (bottomRight.X - topLeft.X - width) / 2
+                   + (behavior.IslandCenterOffsetX ?? 0);
+        var top = topLeft.Y + (behavior.IslandTopOffsetY ?? 6);
+        return (Math.Clamp(left, topLeft.X, Math.Max(topLeft.X, bottomRight.X - width)),
+                Math.Clamp(top, topLeft.Y, Math.Max(topLeft.Y, bottomRight.Y - height)));
+    }
+
+    public void ResetPosition()
+    {
+        AppServices.Settings.Behavior.IslandCenterOffsetX = null;
+        AppServices.Settings.Behavior.IslandTopOffsetY = null;
+        AppServices.SettingsStore.Save(AppServices.Settings);
+        Reposition();
+    }
+
+    private void DragIsland()
+    {
+        // Remember the animated on-screen position before letting Windows move it.
+        var x = Left;
+        var y = Top;
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
+        Left = x; Top = y;
+        try { DragMove(); }
+        catch (InvalidOperationException) { return; }
+        SaveDraggedPosition();
+    }
+
+    private void SaveDraggedPosition()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        var behavior = AppServices.Settings.Behavior;
+        var monitor = MonitorService.DeviceNameForWindow(hwnd);
+        if (!string.IsNullOrWhiteSpace(monitor))
+            behavior.MonitorDeviceName = monitor;
+
+        var work = MonitorService.SelectedWorkArea(behavior.MonitorDeviceName);
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice
+                        ?? System.Windows.Media.Matrix.Identity;
+        var origin = transform.Transform(new System.Windows.Point(work.Left, work.Top));
+        var edge = transform.Transform(new System.Windows.Point(work.Right, work.Bottom));
+        behavior.IslandCenterOffsetX = (Left + Width / 2) - (origin.X + (edge.X - origin.X) / 2);
+        behavior.IslandTopOffsetY = Top - origin.Y;
+        AppServices.SettingsStore.Save(AppServices.Settings);
+        Reposition(); // clamp to the work area, keeping the new anchored position
     }
 
     public void Reposition() => AnimateTo(_expanded ? ExpandedWidth : PillWidth,
@@ -178,16 +234,46 @@ public partial class IslandWindow : Window
 
     private void Pill_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount == 1) Expand();
+        if (e.ChangedButton != MouseButton.Left) return;
+        _pillPressActive = true;
+        _pillPressPoint = e.GetPosition(this);
+        PillRoot.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void Pill_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_pillPressActive || e.LeftButton != MouseButtonState.Pressed) return;
+        var pointer = e.GetPosition(this);
+        if (Math.Abs(pointer.X - _pillPressPoint.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(pointer.Y - _pillPressPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+            return;
+
+        _pillPressActive = false;
+        PillRoot.ReleaseMouseCapture();
+        DragIsland();
+        e.Handled = true;
+    }
+
+    private void Pill_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var click = _pillPressActive;
+        _pillPressActive = false;
+        if (PillRoot.IsMouseCaptured) PillRoot.ReleaseMouseCapture();
+        if (click) Expand();
+        e.Handled = true;
     }
 
     private void Rail_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource is DependencyObject d && FindAncestor<RadioButton>(d) is not null) return;
-        if (e.ButtonState == MouseButtonState.Pressed)
-        {
-            try { DragMove(); } catch { }
-        }
+        if (e.ChangedButton != MouseButton.Left) return;
+        // Do not steal mouse input from navigation, pin/settings, or scroll controls.
+        if (e.OriginalSource is DependencyObject d &&
+            (FindAncestor<ButtonBase>(d) is not null ||
+             FindAncestor<ScrollBar>(d) is not null))
+            return;
+        DragIsland();
+        e.Handled = true;
     }
 
     private static T? FindAncestor<T>(DependencyObject d) where T : class

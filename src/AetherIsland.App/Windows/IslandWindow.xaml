@@ -85,6 +85,10 @@
                         </ScrollViewer>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="6,0,2,0">
+                            <TextBlock Text="⠿" FontSize="17" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Text2Brush}" VerticalAlignment="Center"
+                                       Cursor="SizeAll" ToolTip="Drag island to move"
+                                       Margin="0,0,9,0" MouseLeftButtonDown="Rail_MouseLeftButtonDown" />
                             <Button Style="{DynamicResource IconButton}" Content="&#xE77A;"
                                     ToolTip="{Binding PinLabel}" Click="Pin_Click" x:Name="PinButton" />
                             <Button Style="{DynamicResource IconButton}" Content="&#xE713;"
@@ -101,7 +105,9 @@
             <!-- ============ Collapsed pill ============ -->
             <Border x:Name="PillRoot" Height="40" Margin="5" CornerRadius="16"
                     Background="Transparent" Cursor="Hand"
-                    MouseLeftButtonDown="Pill_MouseLeftButtonDown">
+                    MouseLeftButtonDown="Pill_MouseLeftButtonDown"
+                    MouseLeftButtonUp="Pill_MouseLeftButtonUp"
+                    MouseMove="Pill_MouseMove">
                 <Grid Margin="14,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

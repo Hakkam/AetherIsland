@@ -47,6 +47,10 @@ public sealed class BehaviorSettings
     public string FullscreenRule { get; set; } = "hide"; // hide | stay
     public string? MonitorDeviceName { get; set; }
     public bool ReducedMotion { get; set; }
+    // Desktop-independent offsets relative to the selected monitor working area.
+    // Null retains the default centered position near the top of the display.
+    public double? IslandCenterOffsetX { get; set; }
+    public double? IslandTopOffsetY { get; set; }
 }
 
 public sealed class DashboardSettings

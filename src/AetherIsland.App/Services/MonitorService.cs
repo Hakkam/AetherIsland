@@ -36,6 +36,14 @@ public static class MonitorService
         return selected ?? primary ?? new WorkArea(0, 0, 1920, 1080);
     }
 
+    public static string? DeviceNameForWindow(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return null;
+        var monitor = MonitorFromWindow(hwnd, 2); // MONITOR_DEFAULTTONEAREST
+        var info = CreateInfo();
+        return monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref info) ? info.szDevice : null;
+    }
+
     public static bool IsSelectedMonitor(IntPtr monitor, string? device)
     {
         var info = CreateInfo();
@@ -66,6 +74,9 @@ public static class MonitorService
     }
 
     private delegate bool MonitorEnumProc(IntPtr monitor, IntPtr hdc, IntPtr rect, IntPtr data);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
 
     [DllImport("user32.dll")]
     private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip,
