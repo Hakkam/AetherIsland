@@ -60,6 +60,9 @@ public sealed class ScreenTimeService
         var day = DateTime.Now.Date.ToString("yyyy-MM-dd");
         if (day != _lastDay)
         {
+            // Close the previous day at midnight, otherwise one long foreground
+            // session is incorrectly attributed entirely to the new day.
+            FlushCurrent(DateTime.Today);
             _lastDay = day;
             _switchesToday = 0;
             _repo.PruneOlderThan(_settings.Privacy.RetentionDays);
@@ -69,7 +72,9 @@ public sealed class ScreenTimeService
         var idle = ForegroundTracker.GetIdleSeconds();
         if (idle > 90)
         {
-            FlushCurrent();
+            // GetLastInputInfo is the authoritative last interaction time. Count only
+            // foreground time before that point, rather than including idle minutes.
+            FlushCurrent(DateTime.Now.AddSeconds(-idle));
             _current = null;
             Ticked?.Invoke();
             return;
@@ -101,20 +106,21 @@ public sealed class ScreenTimeService
         Ticked?.Invoke();
     }
 
-    private void FlushCurrent()
+    private void FlushCurrent(DateTime? endAt = null)
     {
         if (_current is null) return;
-        var seconds = (int)(DateTime.Now - _currentSince).TotalSeconds;
+        var end = endAt ?? DateTime.Now;
+        var seconds = Math.Max(0, (int)(end - _currentSince).TotalSeconds);
         if (seconds > 0)
         {
             _repo.AddSeconds(
-                DateTime.Now.Date.ToString("yyyy-MM-dd"),
+                _currentSince.Date.ToString("yyyy-MM-dd"),
                 _current.Exe,
                 _current.DisplayName,
                 _current.Category,
                 seconds, 0);
         }
-        _currentSince = DateTime.Now;
+        _currentSince = end;
     }
 
     public void FlushNow() => FlushCurrent();
