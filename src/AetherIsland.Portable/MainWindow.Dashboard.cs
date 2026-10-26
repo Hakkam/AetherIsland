@@ -99,7 +99,7 @@ public partial class MainWindow
                 temp.Text = "—"; description.Text = "Weather unavailable / offline"; return;
             }
             temp.Text = $"{data.TempC:0}°";
-            description.Text = $"{data.LocationName} · {OpenMeteoService.Description(data.Code)}";
+            description.Text = $"{data.LocationName} · {WeatherCodes.Describe(data.Code, data.IsDay).Desc}";
         }
         catch (Exception ex)
         {
@@ -144,13 +144,13 @@ public partial class MainWindow
             {
                 var current = await _weather.GetAsync(s.WeatherLatitude.Value, s.WeatherLongitude.Value, s.WeatherLocation);
                 if (current is null) { forecast.Children.Add(Ui.Text("Weather is offline.", 11)); return; }
-                forecast.Children.Add(Ui.Text($"{current.TempC:0}°C  ·  {OpenMeteoService.Description(current.Code)}",
+                forecast.Children.Add(Ui.Text($"{current.TempC:0}°C  ·  {WeatherCodes.Describe(current.Code, current.IsDay).Desc}",
                     20, true));
                 var cards = new StackPanel { Orientation = Orientation.Horizontal };
                 foreach (var point in current.Daily.Take(5))
                 {
                     var block = Ui.V(Ui.Text(point.Date.ToString("ddd"), 10, true),
-                        Ui.Text($"{point.MaxTempC:0}° / {point.MinTempC:0}°", 11));
+                        Ui.Text($"{point.MaxC:0}° / {point.MinC:0}°", 11));
                     block.Margin = new Thickness(6, 6, 20, 0);
                     cards.Children.Add(block);
                 }
