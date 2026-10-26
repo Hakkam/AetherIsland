@@ -13,8 +13,28 @@ namespace AetherIsland.Portable;
 
 public partial class MainWindow
 {
-    private readonly OpenMeteoService _weather = new(
-        cacheDir: System.IO.Path.Combine(PortableData.Root, "cache"));
+    // Cache a task per coordinate for 30 minutes. The UI redraws once per minute;
+    // that redraw must not cause a fresh network request.
+    private Task<WeatherData?>? _weatherTask;
+    private string _weatherKey = "";
+    private DateTime _weatherLastRequest = DateTime.MinValue;
+
+    private Task<WeatherData?> FetchWeather(double latitude, double longitude, string label, bool force = false)
+    {
+        var lat = latitude.ToString("0.00000", CultureInfo.InvariantCulture);
+        var lon = longitude.ToString("0.00000", CultureInfo.InvariantCulture);
+        var key = lat + "_" + lon;
+        if (!force && key == _weatherKey && _weatherTask != null &&
+            DateTime.UtcNow - _weatherLastRequest < TimeSpan.FromMinutes(30))
+            return _weatherTask;
+        _weatherKey = key;
+        _weatherLastRequest = DateTime.UtcNow;
+        // Separate cache directories prevent offline weather from a previous
+        // location being incorrectly relabeled as the newly selected city.
+        var service = new OpenMeteoService(cacheDir:
+            System.IO.Path.Combine(PortableData.Root, "cache", key));
+        return _weatherTask = service.GetAsync(latitude, longitude, label);
+    }
 
     private UIElement RenderDashboard()
     {
@@ -92,14 +112,14 @@ public partial class MainWindow
         description.Text = "Fetching official forecast";
         try
         {
-            var data = await _weather.GetAsync(st.WeatherLatitude.Value,
+            var data = await FetchWeather(st.WeatherLatitude.Value,
                 st.WeatherLongitude.Value, st.WeatherLocation);
             if (data is null)
             {
                 temp.Text = "—"; description.Text = "Weather unavailable / offline"; return;
             }
             temp.Text = $"{data.TempC:0}°";
-            description.Text = $"{data.LocationName} · {WeatherCodes.Describe(data.Code, data.IsDay).Desc}";
+            description.Text = $"{data.LocationName} · {WeatherCodes.Describe(data.Code, data.IsDay).Desc + (data.FromCache ? " · cached/offline" : "")}";
         }
         catch (Exception ex)
         {
@@ -142,9 +162,9 @@ public partial class MainWindow
             if (s.WeatherLatitude is null || s.WeatherLongitude is null) return;
             try
             {
-                var current = await _weather.GetAsync(s.WeatherLatitude.Value, s.WeatherLongitude.Value, s.WeatherLocation);
+                var current = await FetchWeather(s.WeatherLatitude.Value, s.WeatherLongitude.Value, s.WeatherLocation, force: true);
                 if (current is null) { forecast.Children.Add(Ui.Text("Weather is offline.", 11)); return; }
-                forecast.Children.Add(Ui.Text($"{current.TempC:0}°C  ·  {WeatherCodes.Describe(current.Code, current.IsDay).Desc}",
+                forecast.Children.Add(Ui.Text($"{current.TempC:0}°C  ·  {WeatherCodes.Describe(current.Code, current.IsDay).Desc + (current.FromCache ? " · cached/offline" : "")}",
                     20, true));
                 var cards = new StackPanel { Orientation = Orientation.Horizontal };
                 foreach (var point in current.Daily.Take(5))
