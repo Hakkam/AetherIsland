@@ -28,10 +28,14 @@ Manual package uninstall: run `Uninstall-AetherIsland.cmd` from the installed fo
 
 To enable optional calendar sync, create a Google Cloud OAuth Desktop client (enable Google Calendar API) or Microsoft Entra Mobile/desktop public-client application (delegated Calendars.Read; redirect `http://localhost`). Enter each client ID in Settings → Calendar OAuth, then use Connect Google/Connect Microsoft in the Calendar module. Authorization opens the system browser and returns to a loopback listener with PKCE. Tokens are encrypted with the current Windows user's DPAPI. Disconnect removes saved tokens. These flows have compiled in source only until account-specific OAuth consent is verified.
 
-## Latest verified Windows package (2026-10-26)
+## Latest automated Windows installer (2026-10-26)
 
-Windows Actions run [40272645652](https://github.com/Hakkam/AetherIsland/actions/runs/40272645652) passed .NET 10 Release build with **0 warnings / 0 errors** and **27 / 27 unit tests**. Its `AetherIsland-Windows-x64` artifact contains the actual `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`; it was generated from source commit `2b5e0880d54f9003a880cef0ae6119b5e1eb1fea` (later source commits require a new successful CI run to obtain updated binaries). Download from the run's Artifacts section; CI artifacts expire according to GitHub retention settings.
+The latest successful Windows Actions run is [40275086222](https://github.com/Hakkam/AetherIsland/actions/runs/40275086222) at source commit `203285e76648eb63bfff0e1697d8d8ab584e2645`. All release steps completed successfully, including .NET 10 Release build, unit tests, Inno Setup compilation, self-contained portable packaging, and artifact upload.
 
-The release contains optional Google/Microsoft OAuth calendar connections (requires user-registered public client IDs), a user-activated camera mirror inside Media, and the adaptive four-widget reference layout. The SQLite stack was updated to Microsoft.Data.Sqlite 10.0.13 / SQLitePCLRaw.bundle_e_sqlite3 2.1.14 after a vulnerability warning in the earlier dependencies. All live sign-ins, hardware access and visual acceptance still require user-side Windows testing. Unsigned executable: verify downloaded file/source and apply normal Windows security precautions.
+**Download:** open the run's **Artifacts** section and download `AetherIsland-Windows-x64`. The archive contains `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`. CI artifacts have time-limited retention and may require signing into GitHub.
 
-Do not use the older `release/AetherIsland-manual-win-x64.zip` committed on `main` as the latest build; its dependencies and features predate this verified Actions build.
+This build incorporates improvements to AI polling/alerts, idle screen-time accounting and navigation recovery. Later documentation commits do not change the built executable. See [reference-to-implementation audit](docs/REFERENCE_IMPLEMENTATION_AUDIT_2026-10-26.md) and [feature coverage](docs/FEATURE_COVERAGE.md).
+
+The installer is **unsigned**. Compilation and passing unit tests do not prove that the application works on your hardware. Live Windows UI, weather/network/media/camera hardware, OAuth, OpenAI Admin quota and Arabic RTL must be validated locally before claiming production acceptance. Windows SmartScreen may display an unknown-publisher warning; verify the repository and artifact before executing software.
+
+Do not download the legacy `release/AetherIsland-manual-win-x64.zip` committed with the initial source if you need the most recent package.
