@@ -13,9 +13,9 @@ namespace AetherIsland.Portable;
 public sealed class ActivityTracker : IDisposable
 {
     private readonly object _gate = new();
-    private Dictionary<string, long> _seconds =
-        PortableData.Read<Dictionary<string, long>>("screen-time.json")
-        ?? new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+    private readonly ActivityDay _persisted = PortableData.Read<ActivityDay>("screen-time.json")
+        ?? new ActivityDay();
+    private Dictionary<string, long> _seconds = new(StringComparer.OrdinalIgnoreCase);
     private Timer? _timer;
     private int _busy;
     private int _ticks;
@@ -23,6 +23,8 @@ public sealed class ActivityTracker : IDisposable
 
     public ActivityTracker()
     {
+        if (_persisted.Date == DateTime.Today.ToString("yyyy-MM-dd"))
+            _seconds = new Dictionary<string, long>(_persisted.Seconds, StringComparer.OrdinalIgnoreCase);
         if (PortableData.Settings.ScreenTimeConsent) Start();
     }
 
@@ -79,6 +81,16 @@ public sealed class ActivityTracker : IDisposable
     {
         lock (_gate) { _seconds.Clear(); Flush(); }
     }
-    private void Flush() => PortableData.Save("screen-time.json", _seconds);
+    private void Flush() => PortableData.Save("screen-time.json", new ActivityDay
+    {
+        Date = _date.ToString("yyyy-MM-dd"),
+        Seconds = new Dictionary<string, long>(_seconds)
+    });
     public void Dispose() => Pause();
+}
+
+public sealed class ActivityDay
+{
+    public string Date { get; set; } = "";
+    public Dictionary<string, long> Seconds { get; set; } = new();
 }
