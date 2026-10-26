@@ -1,49 +1,53 @@
-# Aether Island
+# Aether Island — Portable V2
 
-A Windows 10/11 WPF floating productivity island built with .NET 10. The compact panel expands to dashboard, files, tasks, notes, focus, media, calendar, weather, screen time, network, system, wellbeing, AI, and utilities.
+Lightweight, reference-led floating Windows utility. **Portable-first**: unzip and run, no administrator permission and no separate .NET Desktop runtime required.
 
-## Build
+## Current structure
 
-Install the .NET 10 SDK on Windows. Run dotnet restore AetherIsland.slnx and dotnet build AetherIsland.slnx -c Release. Run ./tools/publish-win-x64.ps1 for a framework-dependent portable build under release/win-x64 (requires the .NET 10 Desktop Runtime). Use -SelfContained for a single-file build when the runtime packs are available. The release/AetherIsland-manual-win-x64.zip package can be extracted and run with AetherIsland.exe or Run-AetherIsland.cmd. Install-AetherIsland.cmd copies it to the current user's LocalAppData Programs folder and creates a Start menu shortcut. The manual package requires .NET 10 Desktop Runtime. For a setup executable, install Inno Setup 6 and run ./tools/package-installer.ps1 -SelfContained; the script publishes first and compiles installer/AetherIsland.iss into release/AetherIsland-Setup-win-x64.exe. The installer uses a per-user directory and creates an uninstaller. Automated Windows builds are defined in .github/workflows/windows-release.yml; successful workflow runs attach Setup.exe and a self-contained portable ZIP as downloadable artifacts. A packaged Windows build has not yet been verified as working on the user's machine.
+- `src/AetherIsland.Portable` — rebuilt WPF shell, fast navigation, app features, local persistence
+- `src/AetherIsland.Core` — shared AI usage contracts and domain logic
+- `src/AetherIsland.Windows` — Windows native APIs, SMTC helpers and credential encryption
+- `src/AetherIsland.Integrations` — OpenAI Admin reporting and live weather/media/Wi-Fi adapters
+- `tests/` — foundational logic tests; Windows visual and lifecycle acceptance is separate
+- `tools/publish-portable-v2.ps1` — self-contained Windows x64 ZIP build and SHA-256 checksum
 
-The application stores local data under %LOCALAPPDATA%/AetherIsland. API keys are encrypted for the current Windows user with DPAPI; never ship that data directory.
+The obsolete installer, precompiled release files, unused provider integrations and old WPF shell were removed **from this rebuild branch**. Historical versions are still available in Git history and the `AetherIsland` baseline.
 
-## AI usage policy
+## Launch
 
-Only an OpenAI API organization with an admin key and an enforced monthly hard spend limit can appear in usage cards. The limit and period-to-date cost come from official Admin API endpoints. A ChatGPT or Codex subscription is separate. If either value is inaccessible, the card is excluded. Existing settings for Anthropic, Z.AI, and local clients are retained but ignored by the usage center for now. Agent detection is a separate consent-controlled view.
+1. Download the **AetherIsland-Portable-V2-win-x64** build artifact from the latest successful Windows build.
+2. Extract `AetherIsland-Portable-V2-win-x64.zip` completely to a folder with write permissions.
+3. Open `AetherIsland.exe`. Click the pill to expand; drag to move; choose a module from the icon rail. Right-click the notification-area icon for Exit / Settings / Reset position.
+4. User data remains in `Data/` alongside the executable. To uninstall, exit and delete the extracted directory. Never delete `Data/` before exporting notes and tasks you wish to retain.
 
-Add the OpenAI organization admin key in Settings > AI providers and test the connection. The key is sent only to api.openai.com.
+### Main modules
 
-## Current limitations
+Dashboard (real OS shortcuts and day progress), live weather, Wi-Fi network status, Windows SMTC media, file shelf, tasks, notes, focus timer, opt-in coarse screen time and **verified OpenAI API monthly organization hard spend limit**.
 
-Google/Microsoft calendar OAuth, the user-activated camera mirror, and dashboard/module layout editing are implemented in source; real account authorization, webcam compatibility, interactive Windows behavior, accessibility, RTL and reference visual fidelity remain pending manual validation. CI has produced an unsigned Inno Setup installer and self-contained portable archive; a successful CI build does not prove installation and operation on a user's PC. AI usage cards intentionally exclude providers without a verified official quota. See docs/FEATURE_COVERAGE.md.
+There is **no support** for ChatGPT/Claude/Codex subscription usage percentage, OpenCode, Z.ai or any provider without a verified and documented remaining allowance. OpenAI API requires an organization Admin key and an enforcing monthly hard spend limit; otherwise the quota card remains absent. An ordinary ChatGPT subscription has no quota access through this API.
 
-## Windows release downloads
+Credentials are protected by Windows DPAPI and bound to the current Windows account. Moving the portable directory to a different account requires re-entering credentials.
 
-Open [Actions](https://github.com/Hakkam/AetherIsland/actions/workflows/windows-release.yml), select a successful workflow run on branch `AetherIsland`, and download the artifact `AetherIsland-Windows-x64`. Inside it are `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`. These packages are generated by a Windows runner; do not claim they exist until a workflow run succeeds. The source archive and older manual ZIP on `main` are not a substitute for a verified installer.
+## Performance
 
-Manual package uninstall: run `Uninstall-AetherIsland.cmd` from the installed folder; it preserves `%LOCALAPPDATA%/AetherIsland` by default. To delete app data explicitly, run `Uninstall-AetherIsland.ps1 -RemoveUserData` from PowerShell. Windows SmartScreen may flag unsigned installers. Do not bypass warnings without verifying the downloaded file and publisher.
+Designed for no idle background integration polling. The UI clock updates once per minute, network and weather fetch only on demand, activity sampling requires explicit consent and runs approximately every 10 seconds, media session is initialized lazily, and focused countdown updates only while running.
 
-## Google Calendar and Microsoft Outlook Calendar
+CPU/RAM thresholds are **target budgets, not measured results** until captured on real hardware.
 
-To enable optional calendar sync, create a Google Cloud OAuth Desktop client (enable Google Calendar API) or Microsoft Entra Mobile/desktop public-client application (delegated Calendars.Read; redirect `http://localhost`). Enter each client ID in Settings → Calendar OAuth, then use Connect Google/Connect Microsoft in the Calendar module. Authorization opens the system browser and returns to a loopback listener with PKCE. Tokens are encrypted with the current Windows user's DPAPI. Disconnect removes saved tokens. These flows have compiled in source only until account-specific OAuth consent is verified.
+## Documentation
 
-## Latest automated Windows installer (2026-10-26)
+- [Three-stage reconstruction plan](docs/PORTABLE_V2_THREE_PHASE_REBUILD.md)
+- [Portable V2 usage and limitations](docs/PORTABLE_V2_README.md)
+- [Engineering skill ownership and final acceptance](docs/PORTABLE_V2_ENGINEERING_OVERVIEW.md)
 
-The latest successful Windows Actions run is [40277370783](https://github.com/Hakkam/AetherIsland/actions/runs/40277370783) at source commit `87be641fc7df17b3ef827e963e3f0638b210111f`. All release steps completed successfully, including .NET 10 Release build, unit tests, Inno Setup compilation, self-contained portable packaging, and artifact upload.
+## Building
 
-**Download:** open the run's **Artifacts** section and download `AetherIsland-Windows-x64`. The archive contains `AetherIsland-Setup-win-x64.exe` and `AetherIsland-Portable-win-x64.zip`. CI artifacts have time-limited retention and may require signing into GitHub.
+On Windows 10/11 with .NET SDK 10:
 
-This build incorporates improvements to AI polling/alerts, idle screen-time accounting and navigation recovery. Later documentation commits do not change the built executable. See [reference-to-implementation audit](docs/REFERENCE_IMPLEMENTATION_AUDIT_2026-10-26.md) and [feature coverage](docs/FEATURE_COVERAGE.md).
+```powershell
+./tools/publish-portable-v2.ps1
+```
 
-The installer is **unsigned**. Compilation and passing unit tests do not prove that the application works on your hardware. Live Windows UI, weather/network/media/camera hardware, OAuth, OpenAI Admin quota and Arabic RTL must be validated locally before claiming production acceptance. Windows SmartScreen may display an unknown-publisher warning; verify the repository and artifact before executing software.
+Output: `release/portable-v2/AetherIsland-Portable-V2-win-x64.zip` and matching SHA-256 file.
 
-Do not download the legacy `release/AetherIsland-manual-win-x64.zip` committed with the initial source if you need the most recent package.
-
-## Tray, drag and installer validation
-
-The latest [Windows build and installer checks](https://github.com/Hakkam/AetherIsland/actions/runs/40277370783) succeeded with 0 build errors, 0 warnings and 27/27 tests. Inno Setup and manual installers both passed actual Windows-runner install/uninstall checks; EXE removal, matching startup-entry removal and preservation of user data were verified.
-
-Right-click the tray icon for Open, Pin/Unpin, Reset position, Refresh AI usage, Check for updates, Settings, and Exit. Drag the collapsed pill to move it without opening it, or drag the expanded `⠿` grip or empty navigation rail. Position persists across restarts and can be reset from the tray. The executable, installer, tray, Settings and Onboarding now use a shared multi-resolution app icon. Update checking compares only official published GitHub Releases; it never silently installs a binary.
-
-Interactive drag/click/animation behavior and icon appearance on actual user hardware still need local visual verification. Details: [installation, icon, tray and dragging audit](docs/INSTALL_TRAY_DRAG_VERIFICATION.md).
+**Release caveat:** The application code and build pipeline are not equivalent to a human-verified interactive build. Tests, compiled artifacts and on-device acceptance are reported separately; unsigned binaries may prompt Windows SmartScreen.
