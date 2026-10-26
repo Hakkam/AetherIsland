@@ -13,6 +13,12 @@ public sealed class AiUsageService
     private readonly SettingsService _settingsStore;
     private readonly ICredentialStoreProxy _credentials;
     private readonly DispatcherTimerAdapter _timer;
+    // Polling, manual refresh, and startup refresh can overlap. Only one request is allowed at a time.
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    // The only supported verified quota is currently an OpenAI monthly hard spend limit.
+    // Announce each reached threshold once per calendar month, not on every poll.
+    private readonly HashSet<string> _announcedThresholds = new(StringComparer.Ordinal);
+    private string _alertMonth = DateTime.Now.ToString("yyyy-MM");
     public UsageAggregator Aggregator { get; } = new();
     public AgentDetector Agents { get; }
 
@@ -53,37 +59,59 @@ public sealed class AiUsageService
 
     public async Task RefreshAsync(UsagePeriodKind period = UsagePeriodKind.BillingPeriod)
     {
-        var settings = _settingsStore.Load();
-        var providers = new List<(string, string, IAiUsageProvider)>();
-        foreach (var p in settings.Ai.Providers.Where(x => x.Enabled && x.ProviderId == AiProviderIds.OpenAI))
+        // Do not queue a second paid-provider poll while an earlier refresh is in flight.
+        if (!await _refreshGate.WaitAsync(0)) return;
+        try
         {
-            var adapter = BuildProvider(p);
-            if (adapter is not null)
-                providers.Add((p.ProviderId, DisplayNameFor(p.ProviderId), adapter));
-        }
-
-        await Aggregator.RefreshAsync(providers, period);
-
-        // alert evaluation
-        if (settings.Ai.AlertsEnabled)
-        {
-            foreach (var result in Aggregator.Results)
+            var settings = _settingsStore.Load();
+            var providers = new List<(string, string, IAiUsageProvider)>();
+            foreach (var p in settings.Ai.Providers.Where(x => x.Enabled && x.ProviderId == AiProviderIds.OpenAI))
             {
-                if (result.Snapshot is null) continue;
-                var alert = UsageAggregator.EvaluateAlerts(result.ProviderId, result.Snapshot, settings.Ai.AlertThresholdsPercent);
-                if (alert is not null && !settings.Ai.MutedAlerts.Contains($"{alert.ProviderId}:{alert.Threshold}"))
-                    AlertTriggered?.Invoke(alert);
+                var adapter = BuildProvider(p);
+                if (adapter is not null)
+                    providers.Add((p.ProviderId, DisplayNameFor(p.ProviderId), adapter));
             }
-        }
 
-        // persist settings sync stamps
-        var live = AppServices.Settings;
-        foreach (var r in Aggregator.Results)
-        {
-            var ps = live.Ai.Providers.FirstOrDefault(x => x.ProviderId == r.ProviderId);
-            if (ps is not null) ps.LastSyncAt = r.RefreshedAt;
+            await Aggregator.RefreshAsync(providers, period);
+
+            // The only supported verified quota is monthly. A newly started calendar
+            // month must allow new alerts; repeated polls within the month must not.
+            var month = DateTime.Now.ToString("yyyy-MM");
+            if (!string.Equals(_alertMonth, month, StringComparison.Ordinal))
+            {
+                _announcedThresholds.Clear();
+                _alertMonth = month;
+            }
+
+            if (settings.Ai.AlertsEnabled)
+            {
+                foreach (var result in Aggregator.Results)
+                {
+                    if (result.Snapshot is null) continue;
+                    var alert = UsageAggregator.EvaluateAlerts(result.ProviderId, result.Snapshot, settings.Ai.AlertThresholdsPercent);
+                    if (alert is null || settings.Ai.MutedAlerts.Contains($"{alert.ProviderId}:{alert.Threshold}"))
+                        continue;
+
+                    var alertId = $"{month}:{alert.ProviderId}:{alert.Source}:{alert.Threshold}";
+                    if (_announcedThresholds.Add(alertId))
+                        AlertTriggered?.Invoke(alert);
+                }
+            }
+
+            // Preserve the in-memory settings object held by view models rather than
+            // replacing it with a stale copy loaded before the network request.
+            var live = AppServices.Settings;
+            foreach (var r in Aggregator.Results)
+            {
+                var ps = live.Ai.Providers.FirstOrDefault(x => x.ProviderId == r.ProviderId);
+                if (ps is not null) ps.LastSyncAt = r.RefreshedAt;
+            }
+            _settingsStore.Save(live);
         }
-        _settingsStore.Save(live);
+        finally
+        {
+            _refreshGate.Release();
+        }
     }
 
     public static string DisplayNameFor(string providerId) => providerId switch
