@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows10.0.19041.0</TargetFramework><UseWPF>true</UseWPF><UseWindowsForms>true</UseWindowsForms><RootNamespace>AetherIsland.Portable</RootNamespace><AssemblyName>AetherIsland</AssemblyName><ApplicationIcon>..\AetherIsland.App\Assets\AetherIsland.ico</ApplicationIcon><Version>2.0.0</Version><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+<ItemGroup><ProjectReference Include="..\AetherIsland.Core\AetherIsland.Core.csproj"/><ProjectReference Include="..\AetherIsland.Data\AetherIsland.Data.csproj"/><ProjectReference Include="..\AetherIsland.Windows\AetherIsland.Windows.csproj"/><ProjectReference Include="..\AetherIsland.Integrations\AetherIsland.Integrations.csproj"/></ItemGroup>
+</Project>
