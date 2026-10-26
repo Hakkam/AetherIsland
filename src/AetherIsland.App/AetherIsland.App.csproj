@@ -8,11 +8,14 @@
     <RootNamespace>AetherIsland.App</RootNamespace>
     <AssemblyName>AetherIsland</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AetherIsland.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
     <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
   </PropertyGroup>
 
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
+    <Resource Include="Assets\AetherIsland.ico" />
   </ItemGroup>
 
   <ItemGroup>

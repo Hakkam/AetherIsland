@@ -1,6 +1,7 @@
 <Window x:Class="AetherIsland.App.Windows.OnboardingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Icon="pack://application:,,,/Assets/AetherIsland.ico"
         Title="Aether Island"
         Width="560" Height="460"
         WindowStartupLocation="CenterScreen"
