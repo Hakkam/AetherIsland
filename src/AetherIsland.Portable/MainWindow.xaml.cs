@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using System.Globalization;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,53 +11,78 @@ using AetherIsland.Integrations.Media;
 namespace AetherIsland.Portable;
 
 /// <summary>
-/// An explicit, no-focus-loss auto-collapse state machine. A click expands;
+/// Explicit, no-focus-loss-auto-collapse state machine. A click expands;
 /// a move past the OS drag threshold drags, not expands. No fullscreen polling.
 /// </summary>
 public partial class MainWindow : Window
 {
-    private const double PillWidth = 188, PillHeight = 48, PanelWidth = 945, PanelHeight = 256;
+    public const double PillWidth = 196, PillHeight = 46, PanelWidth = 945, PanelHeight = 248;
+
     private bool _expanded;
     private bool _pinned;
     private bool _pillPressed;
     private Point _pressPosition;
     private string _current = "dashboard";
+
+    /// <summary>Static module renderers reach the live window through this.</summary>
+    internal static MainWindow Win => (MainWindow)System.Windows.Application.Current.MainWindow;
+
     private readonly DispatcherTimer _clock = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly Dictionary<string, Button> _buttons = new();
     private readonly System.Windows.Forms.NotifyIcon _tray;
     private readonly SmtcMediaWatcher _media = new();
     private bool _mediaStarted;
     private readonly ActivityTracker _activity = new();
-    private readonly string[] _sections =
+
+    public record Module(string Id, string Icon, string Title, Func<UIElement> Render, string Tooltip);
+
+    private static readonly Module[] Sections =
     {
-        "dashboard", "screen", "media", "shelf", "tasks", "notes",
-        "focus", "weather", "network", "ai"
-    };
-    private readonly Dictionary<string, string> _titles = new()
-    {
-        ["dashboard"] = "Dashboard", ["screen"] = "Screen time", ["media"] = "Now playing",
-        ["shelf"] = "File shelf", ["tasks"] = "Tasks", ["notes"] = "Notes",
-        ["focus"] = "Focus timer", ["weather"] = "Weather", ["network"] = "Network",
-        ["ai"] = "Verified AI quota"
+        new("home",      "home",      "Home",       RenderHome,      "Home"),
+        new("dashboard", "dashboard", "Dashboard",  RenderDashboard, "Dashboard"),
+        new("shelf",     "shelf",     "File shelf", RenderShelf,     "File shelf"),
+        new("tasks",     "tasks",     "Tasks",      RenderTasks,     "Tasks"),
+        new("notes",     "notes",     "Notes",      RenderNotes,     "Notes"),
+        new("focus",     "focus",     "Focus",      RenderFocus,     "Focus timer"),
+        new("media",     "media",     "Media",      RenderMedia,     "Now playing and calendar"),
+        new("wellbeing", "wellbeing", "Wellbeing",  RenderWellbeing, "Wellbeing"),
+        new("screen",    "screen",    "Screen time",RenderScreen,    "Screen time"),
+        new("weather",   "weather",   "Weather",    RenderWeather,   "Weather"),
+        new("network",   "network",   "Network",    RenderNetwork,   "Wi-Fi and Bluetooth"),
+        new("ai",        "ai",        "AI quota",   RenderAi,        "Verified AI quota"),
+        new("utilities", "utilities", "Utilities",  RenderUtilities, "Utilities"),
     };
 
     public MainWindow()
     {
         InitializeComponent();
+        Theme.Apply(PortableData.Settings.Theme);
         _pinned = PortableData.Settings.Pinned;
-        PinButton.Content = Iconography.Draw(_pinned ? "pinned" : "pin", 14);
-        SettingsButton.Content = Iconography.Draw("settings", 14);
-        CollapseButton.Content = Iconography.Draw("collapse", 14);
+
         var wa = SystemParameters.WorkArea;
         Left = PortableData.Settings.Left ?? wa.Left + (wa.Width - PillWidth) / 2;
-        Top = PortableData.Settings.Top ?? wa.Top + 7;
+        Top = PortableData.Settings.Top ?? wa.Top + 6;
         ClampToVisibleMonitor();
+
         BuildNavigation();
+        BuildHeaderButtons();
+        ApplyThemeChrome();
+        KeyDown += WindowKeyDown;
         _tray = BuildTray();
         _clock.Tick += (_, _) => UpdateClock();
         _clock.Start();
         UpdateClock();
         Navigate("dashboard");  // Prepare panel before first expansion.
+
+        if (PortableData.Settings.HotkeyEnabled) RegisterGlobalHotkey();
+        StartupManager.SyncOnLaunch();
+        Scheduler.Instance.Start();
+        Scheduler.Instance.MinuteTick += UpdatePillStatus;
+        FocusService.Instance.StateChanged += UpdatePillStatus;
+        _media.Updated += _ => Dispatcher.BeginInvoke(UpdatePillStatus);
+
+        _ = WeatherLocation.EnsureLocatedAsync();
+
         Closed += (_, _) =>
         {
             _clock.Stop();
@@ -65,80 +90,65 @@ public partial class MainWindow : Window
             _media.Dispose();
             _tray.Visible = false;
             _tray.Dispose();
+            UnregisterGlobalHotkey();
         };
     }
 
-    private System.Windows.Forms.NotifyIcon BuildTray()
-    {
-        var tray = new System.Windows.Forms.NotifyIcon
-        {
-            Text = "Aether Island Portable",
-            Visible = true,
-            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath
-                ?? Process.GetCurrentProcess().MainModule?.FileName ?? "") 
-        };
-        tray.MouseUp += (_, e) =>
-        {
-            if (e.Button == System.Windows.Forms.MouseButtons.Left)
-                Dispatcher.BeginInvoke((Action)Toggle);
-        };
-        var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("Open / collapse", null, (_, _) => Toggle());
-        menu.Items.Add("Pin / unpin", null, (_, _) => TogglePin());
-        menu.Items.Add("Reset position", null, (_, _) =>
-        {
-            PortableData.Settings.Left = null;
-            PortableData.Settings.Top = null;
-            var wa = SystemParameters.WorkArea;
-            var x = wa.Left + (wa.Width - PillWidth) / 2;
-            var y = wa.Top + 7;
-            if (_expanded) x -= (PanelWidth - PillWidth) / 2;
-            Left = x; Top = y;
-            PortableData.SaveSettings();
-        });
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Open published releases", null, (_, _) =>
-            OpenUrl("https://github.com/Hakkam/AetherIsland/releases"));
-        menu.Items.Add("Settings", null, (_, _) => { Expand(); Navigate("settings"); });
-        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
-        menu.Items.Add("Exit Aether Island", null, (_, _) => System.Windows.Application.Current.Shutdown());
-        tray.ContextMenuStrip = menu;
-        return tray;
-    }
+    // ------------------------------------------------------------------ nav
 
     private void BuildNavigation()
     {
-        foreach (var id in _sections)
+        foreach (var section in Sections)
         {
-            var button = Iconography.Button(id, _titles[id], 34);
+            var id = section.Id;
+            var button = Iconography.IconButton(section.Icon, section.Tooltip, 29, () => Navigate(id), iconSize: 15.5, corner: 9);
             button.Tag = id;
-            button.Click += (_, _) => Navigate(id);
             Navigation.Children.Add(button);
             _buttons[id] = button;
+        }
+        StyleActiveNav();
+    }
+
+    private void BuildHeaderButtons()
+    {
+        Iconography.SetIcon(RefreshButton, "refresh", 13.5, Theme.Dim);
+        Iconography.SetIcon(AwakeButton, "coffee", 14, Theme.Dim);
+        Iconography.SetIcon(SettingsButton, "settings", 14, Theme.Dim);
+        RefreshAwakeButton();
+    }
+
+    private void StyleActiveNav()
+    {
+        foreach (var (id, button) in _buttons)
+        {
+            var active = id == _current;
+            button.Background = active ? Ui.Solid(Theme.IsDark ? "#39414F" : "#D8DEE8") : Brushes.Transparent;
+            button.Content = Iconography.Draw(
+                Sections.First(s => s.Id == id).Icon, 15.5, 1.8, active ? Theme.Text : Theme.Dim);
         }
     }
 
     private void Navigate(string name)
     {
         _current = name;
-        ModuleTitle.Text = _titles.GetValueOrDefault(name, "Aether Island");
-        foreach (var (id, button) in _buttons)
-            button.Background = id == name
-                ? new SolidColorBrush(Color.FromRgb(49, 57, 71)) : Brushes.Transparent;
-        // Content is reconstructed lazily, without polling other tabs.
+        StyleActiveNav();
+        // Content is reconstructed lazily; other tabs keep no polling behind them.
         ContentHost.Content = name switch
         {
+            "home"      => RenderHome(),
             "dashboard" => RenderDashboard(),
-            "screen" => RenderScreenTime(),
-            "media" => RenderMedia(),
-            "shelf" => RenderShelf(),
-            "tasks" => RenderTasks(),
-            "notes" => RenderNotes(),
-            "focus" => RenderFocus(),
-            "weather" => RenderWeather(),
-            "network" => RenderNetwork(),
-            "ai" => RenderAi(),
-            "settings" => RenderSettings(),
+            "shelf"     => RenderShelf(),
+            "tasks"     => RenderTasks(),
+            "notes"     => RenderNotes(),
+            "focus"     => RenderFocus(),
+            "media"     => RenderMedia(),
+            "wellbeing" => RenderWellbeing(),
+            "screen"    => RenderScreen(),
+            "weather"   => RenderWeather(),
+            "network"   => RenderNetwork(),
+            "ai"        => RenderAi(),
+            "utilities" => RenderUtilities(),
+            "settings"  => RenderSettings(),
             _ => RenderDashboard()
         };
     }
@@ -146,12 +156,23 @@ public partial class MainWindow : Window
     private void UpdateClock()
     {
         var now = DateTime.Now;
-        PillClock.Text = now.ToString("HH:mm", CultureInfo.CurrentCulture);
-        HeaderClock.Text = now.ToString("HH:mm", CultureInfo.CurrentCulture);
-        HeaderDate.Text = now.ToString("MMM dd ddd", CultureInfo.CurrentCulture);
-        if (_expanded && (_current == "dashboard" || _current == "screen"))
-            Navigate(_current);
+        PillClock.Text = now.ToString("HH:mm");
+        HeaderClock.Text = now.ToString("HH:mm");
+        HeaderDate.Text = FormatDate(now);
+        // Keep dashboard/weather honest across the minute boundary without polling.
+        if (_expanded && (_current == "dashboard" || _current == "home")) Navigate(_current);
     }
+
+    internal static string FormatDate(DateTime now)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var name = culture.Name.ToLowerInvariant();
+        if (name.StartsWith("zh") || name.StartsWith("ja"))
+            return now.ToString("M", culture) + now.ToString("ddd", culture);
+        return now.ToString("ddd, MMM d", culture);
+    }
+
+    // ------------------------------------------------------- expand/collapse
 
     private void Toggle() { if (_expanded) Collapse(); else Expand(); }
 
@@ -163,6 +184,7 @@ public partial class MainWindow : Window
         var y = Top;
         Panel.Visibility = Visibility.Visible;
         Pill.Visibility = Visibility.Collapsed;
+        EnsureMediaStarted();
         AnimateWindow(PanelWidth, PanelHeight, x, y);
         Activate();
     }
@@ -176,13 +198,14 @@ public partial class MainWindow : Window
         Panel.Visibility = Visibility.Collapsed;
         Pill.Visibility = Visibility.Visible;
         AnimateWindow(PillWidth, PillHeight, x, y);
+        UpdatePillStatus();
     }
 
     private void AnimateWindow(double width, double height, double x, double y)
     {
         // Layered WPF windows can report stale hit-test geometry during
-        // Width/Height dependency-property animations. Snap the HWND to its
-        // final bounds first; animate only panel content opacity.
+        // Width/Height animations. Snap the HWND to final bounds first; only
+        // fade content opacity afterwards.
         BeginAnimation(WidthProperty, null);
         BeginAnimation(HeightProperty, null);
         BeginAnimation(LeftProperty, null);
@@ -206,12 +229,12 @@ public partial class MainWindow : Window
         if (Left < area.Left - 30 || Left > area.Right - 30)
             Left = area.Left + (area.Width - PillWidth) / 2;
         if (Top < area.Top || Top > area.Bottom - PillHeight)
-            Top = area.Top + 7;
+            Top = area.Top + 6;
     }
 
     private void SavePosition()
     {
-        // Store the equivalent collapsed pill position, not the expanded panel's x.
+        // Store the equivalent collapsed pill position, not the expanded x.
         PortableData.Settings.Left = _expanded ? Left + (Width - PillWidth) / 2 : Left;
         PortableData.Settings.Top = Top;
         PortableData.SaveSettings();
@@ -225,6 +248,16 @@ public partial class MainWindow : Window
         try { DragMove(); }
         catch (InvalidOperationException) { return; }
         SavePosition();
+    }
+
+    private static bool IsInsideButton(DependencyObject? source)
+    {
+        while (source != null)
+        {
+            if (source is System.Windows.Controls.Primitives.ButtonBase) return true;
+            source = System.Windows.Media.VisualTreeHelper.GetParent(source);
+        }
+        return false;
     }
 
     private void PillDown(object sender, MouseButtonEventArgs e)
@@ -260,13 +293,214 @@ public partial class MainWindow : Window
     private void HeaderDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton != MouseButton.Left) return;
-        // Only the explicit drag grip handles mouse-down; tab clicks never bubble
-        // into DragMove and cannot be swallowed by a parent grid.
+        // Clicking header background/gaps drags; clicks that began on a button
+        // never reach here so tab clicks are never swallowed.
+        if (IsInsideButton(e.OriginalSource as DependencyObject)) return;
         DragPanel();
         e.Handled = true;
     }
 
-    /// <summary>Verifies real WPF layout and routed tab actions on the Windows runner.</summary>
+    // -------------------------------------------------------- pill status
+
+    private void UpdatePillStatus()
+    {
+        if (PillDot is null) return;
+        var focus = FocusService.Instance;
+        string status;
+        Brush dot = Ui.Solid(Theme.IsDark ? "#33A6F0" : "#1B7FBE");
+        if (focus.Running)
+        {
+            status = (focus.StopwatchMode ? "Stopwatch " : "Focus ") + focus.Clock;
+            dot = Theme.Good;
+        }
+        else if (_media.LastSession is { IsValid: true } session && session.PlaybackState == "playing")
+        {
+            status = session.Title;
+        }
+        else if (Toggles.KeepAwakeOn) { status = "Keeping awake"; dot = Theme.Orange; }
+        else status = "Aether Island";
+        PillStatus.Text = status;
+        PillDot.Fill = dot;
+        PillStatus.Foreground = Theme.Dim;
+    }
+
+    internal void UpdatePillStatusPublic() => UpdatePillStatus();
+
+    internal string CurrentModule => _current;
+    internal bool IsExpandedPublic => _expanded;
+
+    internal void PinStateChanged()
+    {
+        _pinned = PortableData.Settings.Pinned;
+        PortableData.SaveSettings();
+    }
+
+    internal void ResetPositionPublic() => ResetPosition();
+
+    private void WindowKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && _expanded && !_pinned)
+        {
+            Collapse();
+            e.Handled = true;
+        }
+    }
+
+    private void EnsureMediaStarted()
+    {
+        if (_mediaStarted) return;
+        _mediaStarted = true;
+        _ = _media.StartAsync();
+    }
+
+    // -------------------------------------------------------- header actions
+
+    private void RefreshClick(object sender, RoutedEventArgs e)
+    {
+        // A genuine refresh of the visible module; weather and network fetch
+        // only when their module is the one visible.
+        WeatherLocation.ResetCache();
+        Navigate(_current);
+    }
+
+    private void AwakeClick(object sender, RoutedEventArgs e) => ToggleKeepAwake();
+
+    internal void ToggleKeepAwake()
+    {
+        var on = !Toggles.KeepAwakeOn;
+        Toggles.SetKeepAwake(on);
+        RefreshAwakeButton();
+        UpdatePillStatus();
+    }
+
+    internal void RefreshAwakeButton()
+        => Iconography.SetIcon(AwakeButton, "coffee", 14, Toggles.KeepAwakeOn ? Theme.Orange : Theme.Dim);
+
+    private void SettingsClick(object sender, RoutedEventArgs e) => Navigate("settings");
+
+    // ---------------------------------------------------------------- theme
+
+    internal void ApplyThemeChrome()
+    {
+        Panel.Background = Theme.Bg;
+        Panel.BorderBrush = Theme.PanelEdge;
+        Pill.Background = Theme.Bg;
+        Pill.BorderBrush = Theme.PanelEdge;
+        PillClock.Foreground = Theme.Text;
+        PillStatus.Foreground = Theme.Dim;
+        HeaderClock.Foreground = Theme.Text;
+        HeaderDate.Foreground = Theme.Dim;
+        StyleActiveNav();
+        BuildHeaderButtons();
+        UpdatePillStatus();
+    }
+
+    internal void ThemeChanged()
+    {
+        Theme.Apply(PortableData.Settings.Theme);
+        ApplyThemeChrome();
+        Navigate(_current);
+    }
+
+    // ------------------------------------------------------------- hotkeys
+
+    private const int HotkeyId = 0xA17C;
+
+    private void RegisterGlobalHotkey()
+    {
+        var source = System.Windows.Interop.HwndSource.FromHwnd(
+            new System.Windows.Interop.WindowInteropHelper(this).EnsureHandle());
+        source?.AddHook(WndProc);
+        Native.RegisterHotKey(source!.Handle, HotkeyId, Native.MOD_CONTROL | Native.MOD_ALT, 0x20 /* Space */);
+    }
+
+    private void UnregisterGlobalHotkey()
+    {
+        try
+        {
+            var helper = new System.Windows.Interop.WindowInteropHelper(this);
+            if (helper.Handle != IntPtr.Zero) Native.UnregisterHotKey(helper.Handle, HotkeyId);
+        }
+        catch { /* window already gone */ }
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == Native.WM_HOTKEY && wParam.ToInt32() == HotkeyId)
+        {
+            Toggle();
+            handled = true;
+        }
+        return IntPtr.Zero;
+    }
+
+    // ---------------------------------------------------------------- tray
+
+    private System.Windows.Forms.NotifyIcon BuildTray()
+    {
+        var tray = new System.Windows.Forms.NotifyIcon
+        {
+            Text = "Aether Island",
+            Visible = true,
+            Icon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath
+                ?? Process.GetCurrentProcess().MainModule?.FileName ?? "")
+        };
+        tray.MouseUp += (_, e) =>
+        {
+            if (e.Button == System.Windows.Forms.MouseButtons.Left)
+                Dispatcher.BeginInvoke((Action)Toggle);
+        };
+        var menu = new System.Windows.Forms.ContextMenuStrip();
+
+        var startup = new System.Windows.Forms.ToolStripMenuItem("Launch at Windows startup")
+        {
+            Checked = PortableData.Settings.LaunchAtStartup,
+            CheckOnClick = true
+        };
+        startup.Click += (_, _) =>
+        {
+            PortableData.Settings.LaunchAtStartup = startup.Checked;
+            PortableData.SaveSettings();
+            StartupManager.Apply(startup.Checked);
+        };
+
+        menu.Items.Add("Open / collapse", null, (_, _) => Dispatcher.BeginInvoke((Action)Toggle));
+        menu.Items.Add("Refresh", null, (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            WeatherLocation.ResetCache();
+            Navigate(_current);
+        }));
+        menu.Items.Add("Settings", null, (_, _) => Dispatcher.BeginInvoke(() => { Expand(); Navigate("settings"); }));
+        menu.Items.Add(startup);
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Reset position", null, (_, _) => Dispatcher.BeginInvoke(ResetPosition));
+        menu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        menu.Items.Add("Exit Aether Island", null, (_, _) => System.Windows.Application.Current.Shutdown());
+        tray.ContextMenuStrip = menu;
+        return tray;
+    }
+
+    private void ResetPosition()
+    {
+        PortableData.Settings.Left = null;
+        PortableData.Settings.Top = null;
+        var wa = SystemParameters.WorkArea;
+        var x = wa.Left + (wa.Width - PillWidth) / 2;
+        var y = wa.Top + 6;
+        if (_expanded) x -= (PanelWidth - PillWidth) / 2;
+        Left = x; Top = y;
+        PortableData.SaveSettings();
+    }
+
+    internal ActivityTracker Activity => _activity;
+    internal SmtcMediaWatcher Media => _media;
+
+    public void ShowBalloon(string title, string message)
+        => _tray.ShowBalloonTip(4000, title, message, System.Windows.Forms.ToolTipIcon.Info);
+
+    // --------------------------------------------------- CI shell selfcheck
+
+    /// <summary>Verifies real WPF layout and routed tab actions on demand.</summary>
     public void VerifyShellInteractions()
     {
         Expand();
@@ -275,39 +509,73 @@ public partial class MainWindow : Window
             throw new InvalidOperationException("Expand failed to switch the island state.");
         if (Width < 900 || Height < 200 || ContentHost.ActualHeight < 80)
             throw new InvalidOperationException($"Expanded panel clipped: {Width}x{Height}, content {ContentHost.ActualHeight}.");
-        if (Navigation.Children.Count != _sections.Length)
+        if (Navigation.Children.Count != Sections.Length)
             throw new InvalidOperationException("Navigation button count differs from expected modules.");
-        foreach (var id in _sections)
+        foreach (var section in Sections)
         {
-            var button = _buttons[id];
-            if (button.Content is not System.Windows.Controls.Viewbox)
-                throw new InvalidOperationException($"The {id} icon is not a vector control.");
+            var button = _buttons[section.Id];
+            if (button.Content is not Viewbox)
+                throw new InvalidOperationException($"The {section.Id} icon is not a vector control.");
             button.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, button));
             UpdateLayout();
-            if (_current != id || ModuleTitle.Text != _titles[id] || ContentHost.Content is null)
-                throw new InvalidOperationException($"Navigation failed for {id}.");
+            if (_current != section.Id || ContentHost.Content is null)
+                throw new InvalidOperationException($"Navigation failed for {section.Id}.");
         }
         Collapse();
         UpdateLayout();
         if (_expanded || Pill.Visibility != Visibility.Visible || Panel.Visibility != Visibility.Collapsed || Width > 220)
             throw new InvalidOperationException("Collapse did not restore the compact pill.");
     }
+}
 
-    private void TogglePin()
+/// <summary>Weather location resolution with IP auto-detection fallback.</summary>
+internal static class WeatherLocation
+{
+    private static DateTime _lastAutoAttempt = DateTime.MinValue;
+
+    public static void ResetCache() { /* per-launch state only */ }
+
+    public static async Task EnsureLocatedAsync()
     {
-        _pinned = !_pinned;
-        PortableData.Settings.Pinned = _pinned;
-        PinButton.Content = Iconography.Draw(_pinned ? "pinned" : "pin", 14);
+        var s = PortableData.Settings;
+        if (s.WeatherLatitude is not null || !WeatherLocationService.IpLookupAvailable) return;
+        if (DateTime.UtcNow - _lastAutoAttempt < TimeSpan.FromMinutes(30)) return;
+        _lastAutoAttempt = DateTime.UtcNow;
+        var located = await WeatherLocationService.LocateByIpAsync();
+        if (located is null) return;
+        s.WeatherLatitude = located.Value.latitude;
+        s.WeatherLongitude = located.Value.longitude;
+        s.WeatherLocation = located.Value.label;
+        s.WeatherAutoLocated = true;
         PortableData.SaveSettings();
     }
+}
 
-    private void PinClick(object sender, RoutedEventArgs e) => TogglePin();
-    private void SettingsClick(object sender, RoutedEventArgs e) => Navigate("settings");
-    private void CollapseClick(object sender, RoutedEventArgs e) => Collapse();
+/// <summary>IP geolocation via ipapi.co (free tier, HTTPS, no key). Failure is honest: stays unlocated.</summary>
+internal static class WeatherLocationService
+{
+    public static bool IpLookupAvailable => true;
 
-    private static void OpenUrl(string target)
+    public static async Task<(double latitude, double longitude, string label)?> LocateByIpAsync()
     {
-        try { Process.Start(new ProcessStartInfo(target) { UseShellExecute = true }); }
-        catch (Exception ex) { PortableData.Log("LAUNCH", ex.Message); }
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(7) };
+            using var response = await http.GetAsync("https://ipapi.co/json/");
+            if (!response.IsSuccessStatusCode) return null;
+            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var root = doc.RootElement;
+            var lat = root.GetProperty("latitude").GetDouble();
+            var lon = root.GetProperty("longitude").GetDouble();
+            var city = root.TryGetProperty("city", out var cityEl) ? cityEl.GetString() : null;
+            var country = root.TryGetProperty("country_name", out var countryEl) ? countryEl.GetString() : null;
+            if (city is null) return null;
+            return (lat, lon, string.IsNullOrEmpty(country) ? city : $"{city}, {country}");
+        }
+        catch (Exception ex)
+        {
+            PortableData.Log("WEATHER", "auto-locate: " + ex.Message);
+            return null;
+        }
     }
 }

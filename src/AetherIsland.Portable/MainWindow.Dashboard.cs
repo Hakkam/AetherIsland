@@ -1,224 +1,326 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using AetherIsland.Integrations.Weather;
 
 namespace AetherIsland.Portable;
 
 public partial class MainWindow
 {
-    // Cache a task per coordinate for 30 minutes. The UI redraws once per minute;
-    // that redraw must not cause a fresh network request.
-    private Task<WeatherData?>? _weatherTask;
-    private string _weatherKey = "";
-    private DateTime _weatherLastRequest = DateTime.MinValue;
+    // ------------------------------------------------------------- Home
 
-    private Task<WeatherData?> FetchWeather(double latitude, double longitude, string label, bool force = false)
+    private static UIElement RenderHome()
     {
-        var lat = latitude.ToString("0.00000", CultureInfo.InvariantCulture);
-        var lon = longitude.ToString("0.00000", CultureInfo.InvariantCulture);
-        var key = lat + "_" + lon;
-        if (!force && key == _weatherKey && _weatherTask != null &&
-            DateTime.UtcNow - _weatherLastRequest < TimeSpan.FromMinutes(30))
-            return _weatherTask;
-        _weatherKey = key;
-        _weatherLastRequest = DateTime.UtcNow;
-        // Separate cache directories prevent offline weather from a previous
-        // location being incorrectly relabeled as the newly selected city.
-        var service = new OpenMeteoService(cacheDir:
-            System.IO.Path.Combine(PortableData.Root, "cache", key));
-        return _weatherTask = service.GetAsync(latitude, longitude, label);
+        var now = DateTime.Now;
+        var greeting = now.Hour switch { < 5 => "Late night", < 12 => "Good morning", < 18 => "Good afternoon", _ => "Good evening" };
+
+        var day = Core.Logic.DayProgressCalculator.DayFraction(now, TimeSpan.FromHours(PortableData.Settings.WakeHour), TimeSpan.FromHours(PortableData.Settings.BedHour));
+        var remaining = Core.Logic.DayProgressCalculator.RemainingUntil(now, $"{PortableData.Settings.BedHour:00}:00");
+
+        var weatherTemp = Ui.Text("—", 24, true);
+        var weatherDesc = Ui.Text("Live weather appears once a location is set", 9.5, false, Theme.Dim);
+        _ = WeatherModule.BindCurrentAsync(weatherTemp, weatherDesc);
+
+        var nextTask = (PortableData.Read<List<PortableTask>>("tasks.json") ?? new())
+            .Where(t => !t.Done && !t.Trashed).OrderBy(t => t.DueAt ?? DateTime.MaxValue).FirstOrDefault();
+
+        var layout = new StackPanel { Margin = new Thickness(10, 6, 8, 0) };
+        layout.Children.Add(Ui.H(
+            Ui.Text($"{greeting}.", 17, true),
+            Ui.Spacer(8),
+            Ui.Text(FormatDate(now), 11, false, Theme.Dim)));
+        layout.Children.Add(Ui.Spacer(0, 10));
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(BuildHomeCard("clock", "Day", Ui.V(
+            Ui.Text(day.ToString("P0"), 22, true),
+            Ui.Spacer(0, 6),
+            Ui.Bar(day, 168, 4.5),
+            Ui.Spacer(0, 6),
+            Ui.Text($"{(int)remaining.TotalHours}h {remaining.Minutes:00}m until bedtime", 9.5, false, Theme.Dim))));
+        row.Children.Add(BuildHomeCard("weather", "Weather", Ui.V(
+            Ui.H(weatherTemp, Ui.Spacer(6), weatherDesc))));
+        row.Children.Add(BuildHomeCard("tasks", "Next task", Ui.V(
+            Ui.Text(nextTask is null ? "Nothing queued" : nextTask.Title, 13, true, wrap: true),
+            Ui.Spacer(0, 6),
+            Ui.Text(nextTask?.DueAt is { } due ? $"Due {due:HH:mm}" : "Add tasks in the Tasks module", 9.5, false, Theme.Dim))));
+        var actions = Ui.H(
+            Ui.RoundIcon("screenshot", "Screenshot", 34, QuickAction.Screenshot),
+            Ui.RoundIcon("lock", "Lock Windows", 34, Toggles.LockScreen),
+            Ui.RoundIcon("coffee", "Keep awake", 34, () => Win.ToggleKeepAwake()),
+            Ui.RoundIcon("settings", "Open Settings", 34, () => Win.Navigate("settings")));
+        row.Children.Add(BuildHomeCard("sliders", "Quick actions", actions));
+        layout.Children.Add(row);
+        return Ui.WrapPage(layout);
     }
 
-    private UIElement RenderDashboard()
+    private static FrameworkElement BuildHomeCard(string icon, string title, UIElement content)
     {
-        var layout = new StackPanel { Orientation = Orientation.Horizontal };
+        var stack = new StackPanel { Margin = new Thickness(4, 2, 16, 4) };
+        stack.Children.Add(Ui.SectionTitle(icon, title));
+        stack.Children.Add(Ui.Spacer(0, 8));
+        stack.Children.Add(content);
+        return stack;
+    }
 
-        var weatherText = Ui.Text("Location not set", 26, true);
-        var weatherDescription = Ui.Text("Configure a city for live weather", 10, false, Ui.Dim);
-        var locationName = string.IsNullOrWhiteSpace(PortableData.Settings.WeatherLocation)
-            ? "SET WEATHER LOCATION" : PortableData.Settings.WeatherLocation.ToUpperInvariant();
-        var weather = Ui.V(weatherText, weatherDescription,
-            Ui.Button("Weather settings", () => Navigate("weather")));
-        _ = LoadWeather(weatherText, weatherDescription);
-        layout.Children.Add(Ui.Group("◉  " + locationName, weather, 226));
+    // -------------------------------------------------------- Dashboard
 
-        var toggles = new WrapPanel { Width = 176 };
-        foreach (var (glyph, name, uri) in new[]
+    private static UIElement RenderDashboard()
+    {
+        var grid = new Grid { Margin = new Thickness(2, 0, 2, 0) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(230) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(216) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(250) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        grid.Children.Add(BuildWeatherCard());
+        var toggles = BuildTogglesCard(); Grid.SetColumn(toggles, 1); grid.Children.Add(toggles);
+        var apps = BuildAppsCard(); Grid.SetColumn(apps, 2); grid.Children.Add(apps);
+        var day = BuildDayCard(); Grid.SetColumn(day, 3); grid.Children.Add(day);
+
+        for (var i = 1; i < 4; i++)
         {
-            ("\uE701", "Wi-Fi settings", "ms-settings:network-wifi"),
-            ("\uE702", "Bluetooth settings", "ms-settings:bluetooth"),
-            ("\uE767", "Sound settings", "ms-settings:sound"),
-            ("\uE708", "Display settings", "ms-settings:display"),
-            ("\uE74F", "Night light", "ms-settings:nightlight"),
-            ("\uE8B2", "Battery settings", "ms-settings:batterysaver")
+            var line = new System.Windows.Shapes.Rectangle
+            {
+                Width = 1, Fill = Theme.CardEdge,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                Margin = new Thickness(-1, 12, 0, 12)
+            };
+            grid.Children.Add(line);
+            Grid.SetColumn(line, i);
+        }
+        return Ui.WrapPage(grid);
+    }
+
+    private static FrameworkElement BuildWeatherCard()
+    {
+        var location = string.IsNullOrWhiteSpace(PortableData.Settings.WeatherLocation)
+            ? "Set location" : PortableData.Settings.WeatherLocation.ToUpperInvariant();
+        var head = Ui.H(
+            Iconography.Draw("pin", 10, 2, Theme.Faint),
+            Ui.Text(" " + location, 9.5, true, Theme.Faint));
+        head.Margin = new Thickness(0, 2, 0, 0);
+        head.Cursor = System.Windows.Input.Cursors.Hand;
+        head.MouseLeftButtonDown += (_, _) => Win.Navigate("weather");
+
+        var glyph = new ContentControl { Content = Iconography.Draw("weather", 38, 2.1, Theme.Text), VerticalAlignment = VerticalAlignment.Center };
+        var temp = Ui.Text("—", 27, true);
+        var condition = Ui.Text(PortableData.Settings.WeatherLatitude is null
+            ? "Choose a location for live weather" : "Loading forecast…", 11, true);
+        var hilo = Ui.Text("", 9.5, false, Theme.Dim);
+        _ = WeatherModule.BindCurrentAsync(temp, condition, hilo, glyph);
+
+        var stack = new StackPanel { Margin = new Thickness(14, 8, 10, 8) };
+        stack.Children.Add(head);
+        stack.Children.Add(Ui.Spacer(0, 8));
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Cursor = System.Windows.Input.Cursors.Hand };
+        row.Children.Add(glyph);
+        row.Children.Add(Ui.Spacer(8));
+        row.Children.Add(temp);
+        row.MouseLeftButtonDown += (_, _) => Win.Navigate("weather");
+        stack.Children.Add(row);
+        stack.Children.Add(Ui.Spacer(0, 2));
+        stack.Children.Add(condition);
+        stack.Children.Add(hilo);
+        var open = Ui.Text("Open weather ›", 9, false, Theme.Faint);
+        open.Margin = new Thickness(0, 8, 0, 0);
+        open.Cursor = System.Windows.Input.Cursors.Hand;
+        open.MouseLeftButtonDown += (_, _) => Win.Navigate("weather");
+        stack.Children.Add(open);
+        return stack;
+    }
+
+    private static FrameworkElement BuildTogglesCard()
+    {
+        var wrap = new WrapPanel { ItemWidth = 51, ItemHeight = 51, Margin = new Thickness(4, 8, 0, 0) };
+
+        var wifi = new Ui.ToggleBox("wifi", "Wi-Fi", false, async on =>
+        {
+            var (ok, message) = await Toggles.SetRadioAsync("wifi", on);
+            if (!ok)
+            {
+                App.NotifyBalloon("Wi-Fi", message + " — opening Windows settings.");
+                External.Open("ms-settings:network-wifi");
+            }
+            ReRenderIfVisible("dashboard");
+        });
+        var bluetooth = new Ui.ToggleBox("bluetooth", "Bluetooth", false, async on =>
+        {
+            var (ok, message) = await Toggles.SetRadioAsync("bluetooth", on);
+            if (!ok)
+            {
+                App.NotifyBalloon("Bluetooth", message + " — opening Windows settings.");
+                External.Open("ms-settings:bluetooth");
+            }
+            ReRenderIfVisible("dashboard");
+        });
+        // Reflect the real radio state asynchronously; unavailable radios become disabled.
+        _ = System.Threading.Tasks.Task.Run(async () =>
+        {
+            var (wifiAvail, wifiOn) = Toggles.GetRadioState("wifi");
+            var (btAvail, btOn) = Toggles.GetRadioState("bluetooth");
+            _ = wifi.Dispatcher.BeginInvoke(() =>
+            {
+                if (!wifiAvail) wifi.SetUnavailable("No Wi-Fi radio found — open Windows settings");
+                else wifi.IsOn = wifiOn;
+            });
+            _ = bluetooth.Dispatcher.BeginInvoke(() =>
+            {
+                if (!btAvail) bluetooth.SetUnavailable("No Bluetooth radio found — open Windows settings");
+                else bluetooth.IsOn = btOn;
+            });
+        });
+
+        var coffee = new Ui.ToggleBox("coffee", "Keep awake", Toggles.KeepAwakeOn, on =>
+        {
+            Toggles.SetKeepAwake(on);
+            Win.RefreshAwakeButton();
+            Win.UpdatePillStatus();
+        }, onBackground: Theme.Chip, onForeground: Theme.Orange);
+
+        var moon = new Ui.ToggleBox("moon", "Dark mode", Toggles.IsDarkMode(), on =>
+        {
+            if (Toggles.SetDarkMode(on))
+            {
+                PortableData.Settings.Theme = on ? "dark" : "light";
+                PortableData.SaveSettings();
+                Win.ThemeChanged();
+            }
+        });
+
+        var micState = Toggles.MicrophoneState();
+        var mic = new Ui.ToggleBox("mic", micState.available ? "Microphone mute" : "Microphone unavailable",
+            micState.available && micState.muted, on =>
+        {
+            if (!Toggles.SetMicrophoneMute(on)) App.NotifyBalloon("Microphone", "Windows refused the mute change.");
+        });
+        if (!micState.available) mic.SetUnavailable("No microphone endpoint found");
+
+        var spkState = Toggles.SpeakerState();
+        var volume = new Ui.ToggleBox("volume", spkState.available ? "Mute speakers" : "Audio unavailable",
+            spkState.available && spkState.muted, on =>
+        {
+            if (!Toggles.SetSpeakerMute(on)) App.NotifyBalloon("Speakers", "Windows refused the mute change.");
+        });
+        if (!spkState.available) volume.SetUnavailable("No speaker endpoint found");
+
+        var screenshot = new Ui.ToggleBox("screenshot", "Screenshot → clipboard", false,
+            _ => QuickAction.Screenshot()) { Momentary = true };
+        var lockBtn = new Ui.ToggleBox("lock", "Lock Windows", false, _ => Toggles.LockScreen()) { Momentary = true };
+
+        foreach (var b in new[] { wifi, bluetooth, coffee, moon, mic, volume, screenshot, lockBtn })
+            wrap.Children.Add(b);
+
+        var stack = new StackPanel { Margin = new Thickness(12, 6, 4, 8) };
+        stack.Children.Add(Ui.SectionTitle("sliders", "Quick toggles"));
+        stack.Children.Add(wrap);
+        return stack;
+    }
+
+    private static FrameworkElement BuildAppsCard()
+    {
+        var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var wrap = new WrapPanel { ItemWidth = 80, ItemHeight = 64, Margin = new Thickness(2, 8, 0, 0) };
+        foreach (var (label, iconKey, target, iconPath, tint) in new[]
+        {
+            ("File Explr…", "folder",  "shell:Downloads", (string?)Path.Combine(windir, "explorer.exe"), "#F6C453"),
+            ("Downloa…",   "download","shell:Downloads", (string?)null,                                   "#3F76C9"),
+            ("Calculator", "calculator","calc.exe",      (string?)Path.Combine(windir, "System32", "calc.exe"), "#8A94A6"),
+            ("Notepad",    "notes",   "notepad.exe",     (string?)Path.Combine(windir, "System32", "notepad.exe"), "#7BD3F7"),
+            ("Task Mgr",   "activity","taskmgr.exe",    (string?)Path.Combine(windir, "System32", "taskmgr.exe"), "#5B8DEF"),
+            ("Settings",   "settings","ms-settings:",   (string?)null,                                   "#98A1B0"),
         })
         {
-            var button = Iconography.Button(name switch
-            {
-                "Wi-Fi settings" => "network", "Bluetooth settings" => "bluetooth",
-                "Sound settings" => "volume", "Display settings" => "screen",
-                "Night light" => "weather", _ => "settings"
-            }, name, 51);
-            button.Click += (_, _) => OpenUrl(uri);
-            button.Width = 51;
-            button.Height = 46;
-            toggles.Children.Add(button);
+            var tile = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(2) };
+            UIElement iconHost;
+            if (iconPath is { Length: > 0 } && File.Exists(iconPath))
+                iconHost = AppIcons.Tile(iconPath, 31);
+            else
+                iconHost = new System.Windows.Controls.Border
+                {
+                    Width = 31, Height = 31, CornerRadius = new CornerRadius(9),
+                    Background = Ui.Solid(tint),
+                    Child = Iconography.Draw(iconKey, 17, 1.9, Brushes.White)
+                };
+            tile.Children.Add(iconHost);
+            var caption = Ui.Text(label, 8.2, false, Theme.Dim, TextAlignment.Center);
+            caption.HorizontalAlignment = HorizontalAlignment.Center;
+            caption.Margin = new Thickness(0, 3, 0, 0);
+            tile.Children.Add(caption);
+            tile.Cursor = System.Windows.Input.Cursors.Hand;
+            var launch = target;
+            tile.MouseLeftButtonDown += (_, _) => External.Open(launch);
+            wrap.Children.Add(tile);
         }
-        layout.Children.Add(Ui.Group("Quick system actions", toggles, 214));
+        var stack = new StackPanel { Margin = new Thickness(10, 6, 4, 8) };
+        stack.Children.Add(Ui.SectionTitle("folder", "Apps"));
+        stack.Children.Add(wrap);
+        return stack;
+    }
 
-        var apps = new WrapPanel { Width = 192 };
-        foreach (var (icon, label, target) in new[]
-        {
-            ("\uE8B7", "Explorer", "explorer.exe"),
-            ("\uE896", "Downloads", "shell:Downloads"),
-            ("\uE8EF", "Calculator", "calc.exe"),
-            ("\uE70B", "Notepad", "notepad.exe"),
-            ("\uE713", "Settings", "ms-settings:"),
-            ("\uE7F8", "Task mgr", "taskmgr.exe")
-        })
-        {
-            var button = Iconography.Button(label switch
-            {
-                "Explorer" => "shelf", "Downloads" => "download",
-                "Calculator" => "dashboard", "Notepad" => "notes",
-                "Settings" => "settings", _ => "screen"
-            }, label, 58);
-            button.Click += (_, _) => OpenUrl(target);
-            button.Width = 58;
-            button.Height = 48;
-            apps.Children.Add(button);
-        }
-        layout.Children.Add(Ui.Group("Apps", apps, 218));
-
+    private static FrameworkElement BuildDayCard()
+    {
         var now = DateTime.Now;
         var start = now.Date.AddHours(PortableData.Settings.WakeHour);
         var end = now.Date.AddHours(PortableData.Settings.BedHour);
         if (end <= start) end = end.AddDays(1);
         var fraction = Math.Clamp((now - start).TotalSeconds / (end - start).TotalSeconds, 0, 1);
         var remaining = end - now;
-        var day = Ui.V(Ui.Text(fraction.ToString("P0"), 35, true), Ui.Bar(fraction, 173),
-            new Border { Height = 12 },
-            Ui.Text(remaining.TotalSeconds > 0
-                ? $"{Math.Floor(remaining.TotalHours)}h {remaining.Minutes}m until bedtime"
-                : "Daily schedule complete", 10, false, Ui.Dim),
-            Ui.Text($"Wake {PortableData.Settings.WakeHour:00}:00  ·  Bed {PortableData.Settings.BedHour:00}:00",
-                10, false, Ui.Dim));
-        layout.Children.Add(Ui.Group("Day progress", day, 209, true));
-        return Ui.WrapPage(layout);
+
+        var stack = new StackPanel { Margin = new Thickness(16, 6, 12, 8) };
+        stack.Children.Add(Ui.SectionTitle("clock", "Day"));
+        stack.Children.Add(Ui.Spacer(0, 8));
+        stack.Children.Add(Ui.Text(fraction.ToString("P0", System.Globalization.CultureInfo.InvariantCulture), 26, true));
+        stack.Children.Add(Ui.Spacer(0, 8));
+        stack.Children.Add(Ui.Bar(fraction, 195, 5));
+        stack.Children.Add(Ui.Spacer(0, 8));
+        stack.Children.Add(Ui.Text(remaining.TotalSeconds > 0
+            ? $"{(int)remaining.TotalHours}h {remaining.Minutes:00}m until bedtime" : "Daily schedule complete", 9.5, false, Theme.Dim));
+        stack.Children.Add(Ui.Spacer(0, 3));
+        stack.Children.Add(Ui.Text(
+            $"Wake {PortableData.Settings.WakeHour:00}:00 · Bed {PortableData.Settings.BedHour:00}:00", 9, false, Theme.Faint));
+        stack.Cursor = System.Windows.Input.Cursors.Hand;
+        stack.MouseLeftButtonDown += (_, _) => Win.Navigate("settings");
+        return stack;
     }
 
-    private async Task LoadWeather(TextBlock temp, TextBlock description)
+    internal static void ReRenderIfVisible(string module)
     {
-        var st = PortableData.Settings;
-        if (st.WeatherLatitude is null || st.WeatherLongitude is null) return;
-        temp.Text = "…";
-        description.Text = "Fetching official forecast";
+        if (Win.CurrentModule == module) Win.Navigate(module);
+    }
+}
+
+/// <summary>Launch helpers used by the dashboard and utilities.</summary>
+internal static class External
+{
+    public static void Open(string target)
+    {
         try
         {
-            var data = await FetchWeather(st.WeatherLatitude.Value,
-                st.WeatherLongitude.Value, st.WeatherLocation);
-            if (data is null)
-            {
-                temp.Text = "—"; description.Text = "Weather unavailable / offline"; return;
-            }
-            temp.Text = $"{data.TempC:0}°";
-            description.Text = $"{data.LocationName} · {WeatherCodes.Describe(data.Code, data.IsDay).Desc + (data.FromCache ? " · cached/offline" : "")}";
+            if (!TryStart(target)) PortableData.Log("LAUNCH", "failed: " + target);
         }
-        catch (Exception ex)
-        {
-            PortableData.Log("WEATHER", ex.Message);
-            temp.Text = "—"; description.Text = "Live weather unavailable";
-        }
+        catch (Exception ex) { PortableData.Log("LAUNCH", $"{target}: {ex.Message}"); }
     }
 
-    private UIElement RenderWeather()
+    private static bool TryStart(string target)
     {
-        var city = Ui.Input(PortableData.Settings.WeatherLocation, 240);
-        var status = Ui.Text("Choose a city to fetch verified weather.", 11, false, Ui.Dim);
-        var forecast = new StackPanel();
-        var v = Ui.V(Ui.Title("Weather · Open-Meteo"),
-            new Border { Height = 8 },
-            Ui.H(city, Ui.Button("Find location", async () =>
-            {
-                if (string.IsNullOrWhiteSpace(city.Text)) { status.Text = "Enter a city name."; return; }
-                status.Text = "Searching…";
-                try
-                {
-                    var results = await OpenMeteoService.GeocodeAsync(city.Text.Trim());
-                    if (results.Count == 0) { status.Text = "No matching city found."; return; }
-                    var first = results[0];
-                    PortableData.Settings.WeatherLatitude = first.Latitude;
-                    PortableData.Settings.WeatherLongitude = first.Longitude;
-                    PortableData.Settings.WeatherLocation = first.Name + ", " + first.Country;
-                    PortableData.SaveSettings();
-                    status.Text = PortableData.Settings.WeatherLocation;
-                    await RefreshForecast();
-                }
-                catch (Exception ex) { PortableData.Log("WEATHER", ex.Message); status.Text = "Lookup failed."; }
-            })),
-            new Border { Height = 9 }, status,
-            new Border { Height = 8 }, forecast);
-        async Task RefreshForecast()
+        try
         {
-            forecast.Children.Clear();
-            var s = PortableData.Settings;
-            if (s.WeatherLatitude is null || s.WeatherLongitude is null) return;
-            try
-            {
-                var current = await FetchWeather(s.WeatherLatitude.Value, s.WeatherLongitude.Value, s.WeatherLocation, force: true);
-                if (current is null) { forecast.Children.Add(Ui.Text("Weather is offline.", 11)); return; }
-                forecast.Children.Add(Ui.Text($"{current.TempC:0}°C  ·  {WeatherCodes.Describe(current.Code, current.IsDay).Desc + (current.FromCache ? " · cached/offline" : "")}",
-                    20, true));
-                var cards = new StackPanel { Orientation = Orientation.Horizontal };
-                foreach (var point in current.Daily.Take(5))
-                {
-                    var block = Ui.V(Ui.Text(point.Date.ToString("ddd"), 10, true),
-                        Ui.Text($"{point.MaxC:0}° / {point.MinC:0}°", 11));
-                    block.Margin = new Thickness(6, 6, 20, 0);
-                    cards.Children.Add(block);
-                }
-                forecast.Children.Add(cards);
-            }
-            catch (Exception ex) { PortableData.Log("WEATHER", ex.Message); forecast.Children.Add(Ui.Text("Forecast unavailable.")); }
+            Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });
+            return true;
         }
-        _ = RefreshForecast();
-        return Ui.WrapPage(v);
+        catch { return false; }
     }
+}
 
-    private UIElement RenderNetwork()
+internal static class QuickAction
+{
+    public static void Screenshot()
     {
-        var status = Ui.Text("Reading Windows network status…", 12);
-        var wifi = new StackPanel();
-        var v = Ui.V(Ui.Title("Wi-Fi & Bluetooth · Windows state"),
-            new Border { Height = 9 }, status,
-            new Border { Height = 8 },
-            Ui.H(Ui.Button("Wi-Fi settings", () => OpenUrl("ms-settings:network-wifi")),
-                 Ui.Button("Bluetooth settings", () => OpenUrl("ms-settings:bluetooth")),
-                 Ui.Button("Refresh", () => _ = Refresh())),
-            new Border { Height = 6 }, wifi);
-        async Task Refresh()
-        {
-            status.Text = "Scanning…";
-            try
-            {
-                var scan = await Task.Run(() => AetherIsland.Windows.WlanApi.GetAvailableNetworks());
-                wifi.Children.Clear();
-                status.Text = scan.Any(n => n.Connected) ? "Connected to " +
-                    scan.First(n => n.Connected).Ssid : "Wi-Fi not connected";
-                foreach (var n in scan.Take(8))
-                    wifi.Children.Add(Ui.Text($"{n.Ssid}  ·  Signal {n.SignalPercent}%  ·  " +
-                        (n.Secured ? "Secured" : "Open"), 11, false, Ui.Dim));
-            }
-            catch (Exception ex) { PortableData.Log("NETWORK", ex.Message); status.Text = "Wireless adapter unavailable"; }
-        }
-        _ = Refresh();
-        return Ui.WrapPage(v);
+        var file = Toggles.CaptureScreen();
+        App.NotifyBalloon("Screenshot", file is null
+            ? "Capture failed — see Data\\logs\\app.log"
+            : "Saved to clipboard and Data\\screenshots");
     }
 }

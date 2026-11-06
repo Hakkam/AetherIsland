@@ -1,14 +1,17 @@
 using System.Windows;
 using System.Windows.Threading;
+
 namespace AetherIsland.Portable;
+
 public partial class App : System.Windows.Application
 {
     private Mutex? _mutex;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         PortableData.Initialize();
-        _mutex = new Mutex(true, "AetherIsland.Portable.V2." + PortableData.InstanceKey, out var created);
+        _mutex = new Mutex(true, "AetherIsland.Portable." + PortableData.InstanceKey, out var created);
         if (!created) { Shutdown(); return; }
         DispatcherUnhandledException += (_, args) =>
         {
@@ -17,7 +20,12 @@ public partial class App : System.Windows.Application
                 "Aether Island", MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
-        AppDomain.CurrentDomain.UnhandledException += (_, args) => PortableData.Log("FATAL", args.ExceptionObject.ToString() ?? "Unknown");
+        System.AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            PortableData.Log("FATAL", args.ExceptionObject.ToString() ?? "Unknown");
+
+        if (!string.Equals(PortableData.Settings.Language, "en", StringComparison.Ordinal))
+            AetherIsland.Core.Localization.Loc.SetLanguage(PortableData.Settings.Language);
+
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
@@ -43,5 +51,20 @@ public partial class App : System.Windows.Application
             }), DispatcherPriority.ApplicationIdle);
         }
     }
-    protected override void OnExit(ExitEventArgs e) { _mutex?.Dispose(); base.OnExit(e); }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _mutex?.Dispose();
+        base.OnExit(e);
+    }
+
+    /// <summary>Balloon notifications surfaced through the tray icon.</summary>
+    public static void NotifyBalloon(string title, string message)
+    {
+        try
+        {
+            if (Current.MainWindow is MainWindow win) win.ShowBalloon(title, message);
+        }
+        catch { /* notification must never crash the app */ }
+    }
 }

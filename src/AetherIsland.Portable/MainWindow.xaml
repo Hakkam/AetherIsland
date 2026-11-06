@@ -3,39 +3,35 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="Aether Island" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize"
  WindowStartupLocation="Manual" ShowInTaskbar="False" Topmost="True"
- Width="188" Height="48" Background="Transparent">
+ Width="196" Height="46" Background="Transparent">
  <Grid>
-  <Border x:Name="Pill" CornerRadius="19" Background="#111419" BorderBrush="#383F4B" BorderThickness="1" Margin="3"
+  <!-- Collapsed pill -->
+  <Border x:Name="Pill" CornerRadius="20" Background="#0F1216" BorderBrush="#2A303A" BorderThickness="1" Margin="3"
    MouseLeftButtonDown="PillDown" MouseMove="PillMove" MouseLeftButtonUp="PillUp">
-   <Grid Margin="15,0">
+   <Grid x:Name="PillGrid" Margin="14,0">
     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <TextBlock x:Name="PillClock" Text="--:--" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
-    <TextBlock Grid.Column="1" Text="  Aether Island" FontSize="10" Foreground="#9098A5" VerticalAlignment="Center"/>
-    <Ellipse Grid.Column="2" Fill="#19A8EA" Width="6" Height="6" VerticalAlignment="Center"/>
+    <TextBlock x:Name="PillClock" Text="--:--" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Foreground="#F2F5F9"/>
+    <TextBlock x:Name="PillStatus" Grid.Column="1" Text="Aether Island" FontSize="9.5" Foreground="#8D96A6" VerticalAlignment="Center" Margin="10,0,6,0" TextTrimming="CharacterEllipsis"/>
+    <Ellipse x:Name="PillDot" Grid.Column="2" Fill="#33A6F0" Width="6" Height="6" VerticalAlignment="Center"/>
    </Grid>
   </Border>
-  <Border x:Name="Panel" CornerRadius="19" BorderBrush="#353A44" BorderThickness="1"
-   Background="#111419" Margin="3" Visibility="Collapsed">
+  <!-- Expanded panel -->
+  <Border x:Name="Panel" CornerRadius="22" Background="#0F1216" BorderBrush="#262C36" BorderThickness="1"
+   Margin="3" Visibility="Collapsed">
    <Grid>
-    <Grid.RowDefinitions><RowDefinition Height="43"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-    <Grid Background="Transparent">
+    <Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+    <Grid Background="Transparent" MouseLeftButtonDown="HeaderDown" x:Name="HeaderBar">
      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-       <TextBlock Text="⠿" Foreground="#A8B0C2" Cursor="SizeAll" FontSize="17" FontWeight="Bold"
-        VerticalAlignment="Center" ToolTip="Drag the island" MouseLeftButtonDown="HeaderDown" Margin="0,0,7,0"/>
-       <StackPanel x:Name="Navigation" Orientation="Horizontal" VerticalAlignment="Center"/>
-       <TextBlock x:Name="ModuleTitle" Text="Dashboard" Foreground="#B7C2D2"
-        VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11" FontWeight="SemiBold"/>
-      </StackPanel>
-     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-      <TextBlock x:Name="HeaderClock" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,10,0"/>
-      <TextBlock x:Name="HeaderDate" VerticalAlignment="Center" FontSize="10" Foreground="#8D97A7" Margin="0,0,12,0"/>
-      <Button x:Name="PinButton" Content="Pin" ToolTip="Pin panel" Click="PinClick" Background="Transparent" Margin="1"/>
-      <Button x:Name="SettingsButton" Content="Settings" ToolTip="Settings" Click="SettingsClick" Background="Transparent" Margin="1"/>
-      <Button x:Name="CollapseButton" Content="Close" ToolTip="Collapse" Click="CollapseClick" Background="Transparent" Margin="1"/>
+     <StackPanel x:Name="Navigation" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" Background="Transparent"/>
+     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" Background="Transparent">
+      <TextBlock x:Name="HeaderClock" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,9,0" Background="Transparent"/>
+      <TextBlock x:Name="HeaderDate" VerticalAlignment="Center" FontSize="9.5" Margin="0,0,12,0" Background="Transparent"/>
+      <Button x:Name="RefreshButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Refresh" Click="RefreshClick"/>
+      <Button x:Name="AwakeButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Keep awake" Click="AwakeClick"/>
+      <Button x:Name="SettingsButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Settings" Click="SettingsClick"/>
      </StackPanel>
     </Grid>
-    <Border Grid.Row="1" Margin="10,0,10,11" Background="#15191F" CornerRadius="11">
+    <Border Grid.Row="1" Margin="10,0,10,10" Background="#14181E" CornerRadius="12">
      <ContentControl x:Name="ContentHost"/>
     </Border>
    </Grid>

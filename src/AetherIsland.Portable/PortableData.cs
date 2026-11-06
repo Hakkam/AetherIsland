@@ -8,8 +8,10 @@ namespace AetherIsland.Portable;
 
 /// <summary>
 /// All user-owned application data lives next to the portable executable.
-/// No registry writes, no Windows installer and no silent LocalAppData fallback.
-/// Windows DPAPI protects API credentials, which cannot be moved to another Windows user.
+/// No registry writes for data, no silent LocalAppData fallback. The only
+/// registry write the app performs is the optional opt-in Windows startup
+/// entry managed by <see cref="StartupManager"/>. Windows DPAPI protects API
+/// credentials; those cannot be moved to another Windows user.
 /// </summary>
 public static class PortableData
 {
@@ -20,6 +22,7 @@ public static class PortableData
         Encoding.UTF8.GetBytes(Path.GetFullPath(Root).ToUpperInvariant())))[..16];
     public static PortableSettings Settings { get; private set; } = new();
     public static DpapiCredentialStore Credentials { get; private set; } = null!;
+
     public static void Initialize()
     {
         Directory.CreateDirectory(Root); // Refuse if read-only; do not silently use another path.
@@ -29,6 +32,7 @@ public static class PortableData
         Settings = Read<PortableSettings>("settings.json") ?? new PortableSettings();
         Credentials = new DpapiCredentialStore(Root);
     }
+
     public static T? Read<T>(string relative)
     {
         lock (Gate)
@@ -41,18 +45,25 @@ public static class PortableData
             catch (Exception ex) { Log("DATA READ", ex.Message); return default; }
         }
     }
+
     public static void Save<T>(string relative, T data)
     {
         lock (Gate)
         {
-            var path = Path.Combine(Root, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            var tmp = path + ".tmp";
-            File.WriteAllText(tmp, JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8);
-            File.Move(tmp, path, true);
+            try
+            {
+                var path = Path.Combine(Root, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                var tmp = path + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(data, JsonOptions), Encoding.UTF8);
+                File.Move(tmp, path, true);
+            }
+            catch (Exception ex) { Log("DATA WRITE", ex.Message); }
         }
     }
+
     public static void SaveSettings() => Save("settings.json", Settings);
+
     public static void Log(string area, string message)
     {
         try
@@ -73,27 +84,61 @@ public static class PortableData
 
 public sealed class PortableSettings
 {
+    // Window state
     public bool Pinned { get; set; }
     public double? Left { get; set; }
     public double? Top { get; set; }
     public bool ReducedMotion { get; set; }
+
+    // Appearance
+    public string Theme { get; set; } = "dark";          // dark | light | system
+    public string Accent { get; set; } = "#33A6F0";
+    public string Language { get; set; } = "en";         // en | ar | tr
+
+    // System integration
+    public bool LaunchAtStartup { get; set; } = true;
+    public bool HotkeyEnabled { get; set; } = true;      // Ctrl+Alt+Space toggles the island
+
+    // Screen time
     public bool ScreenTimeConsent { get; set; }
-    public string Language { get; set; } = "en";
+
+    // Weather
     public string WeatherLocation { get; set; } = "";
     public double? WeatherLatitude { get; set; }
     public double? WeatherLongitude { get; set; }
+    public string WeatherUnit { get; set; } = "c";       // c | f
+    public bool WeatherAutoLocated { get; set; }
+
+    // Day schedule
     public int WakeHour { get; set; } = 7;
     public int BedHour { get; set; } = 23;
+
+    // Calendar (ICS; OAuth providers are not supported and never pretended)
+    public List<string> CalendarSources { get; set; } = new();
+
+    // Wellbeing
+    public bool WellbeingEnabled { get; set; }
+    public int EyeBreakMinutes { get; set; } = 20;
+    public int StandMinutes { get; set; } = 50;
+    public int HydrationCups { get; set; } = 0;          // today's logged cups
+    public DateTime HydrationDay { get; set; } = DateTime.MinValue;
 }
+
 public sealed class PortableTask
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Title { get; set; } = "";
     public bool Done { get; set; }
+    public bool Trashed { get; set; }
+    public DateTime? DueAt { get; set; }                 // parsed from "15m", "2h", "14:30" suffixes
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime? DoneAt { get; set; }
 }
+
 public sealed class PortableNote
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Content { get; set; } = "";
+    public bool Pinned { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
 }
