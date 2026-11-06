@@ -4,17 +4,5 @@ obj/
 .vs/
 publish/
 *.db
-
-# Build outputs and portable user data (never commit credentials)
-release/
-**/bin/
-**/obj/
-**/Data/
-**/logs/
-*.pdb
-*.tmp
-*.user
-*.sqlite
-*.db-wal
-*.db-shm
 *.zip
+_scratch/
