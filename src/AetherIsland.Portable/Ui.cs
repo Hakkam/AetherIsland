@@ -121,6 +121,7 @@ internal static class Ui
         var box = new TextBox
         {
             Width = width,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Left,
             Text = text ?? "",
             FontSize = fontSize,
             Background = Theme.Chip,

@@ -83,7 +83,20 @@ public partial class MainWindow
                     if (connectError != null)
                         pane.Children.Add(Ui.Text("Wireless adapter unavailable: " + connectError, 10.5, false, Theme.Dim));
                     else if (networks.Count == 0)
-                        pane.Children.Add(Ui.Text(wifiOn ? "No networks found — try Refresh." : "Wi-Fi is off.", 10.5, false, Theme.Dim));
+                    {
+                        pane.Children.Add(Ui.Text(wifiOn
+                            ? "No networks listed. Windows requires Location permission to show nearby Wi-Fi networks."
+                            : "Wi-Fi is off.", 10.5, false, Theme.Dim));
+                        if (wifiOn)
+                        {
+                            var hint = Ui.TextButton("Allow location → open Windows privacy settings", () =>
+                                External.Open("ms-settings:privacy-location"),
+                                "Windows gates WLAN scanning behind Location", 9.5,
+                                background: Theme.Chip, foreground: Theme.Text);
+                            hint.Margin = new Thickness(0, 4, 0, 2);
+                            pane.Children.Add(hint);
+                        }
+                    }
                     var columns = new StackPanel { Orientation = Orientation.Horizontal };
                     var leftCol = new StackPanel { Width = 420 };
                     var rightCol = new StackPanel { Width = 420 };

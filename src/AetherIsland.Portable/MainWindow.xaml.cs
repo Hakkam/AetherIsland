@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using AetherIsland.Integrations.Media;
 
@@ -500,6 +502,45 @@ public partial class MainWindow : Window
 
     // --------------------------------------------------- CI shell selfcheck
 
+    /// <summary>
+    /// Renders the pill and every expanded module to PNG files for visual
+    /// acceptance. Used by the local preview and CI evidence steps.
+    /// </summary>
+    public async Task CaptureAllViews(string dir)
+    {
+        Directory.CreateDirectory(dir);
+        static async Task Settle() { for (var i = 0; i < 6; i++) { await Dispatcher.Yield(DispatcherPriority.ApplicationIdle); await Task.Delay(60); } }
+
+        Expand();
+        await Settle();
+        Capture("00-expanded-" + _current, dir);
+        foreach (var section in Sections)
+        {
+            Navigate(section.Id);
+            await Settle();
+            Capture(section.Id, dir);
+        }
+        Navigate("settings");
+        await Settle();
+        Capture("settings", dir);
+        Collapse();
+        await Settle();
+        Capture("pill-collapsed", dir);
+        await Settle();
+    }
+
+    private void Capture(string name, string dir)
+    {
+        var zoom = 1.5;
+        var rtb = new RenderTargetBitmap(
+            (int)(ActualWidth * zoom), (int)(ActualHeight * zoom), 96 * zoom, 96 * zoom, System.Windows.Media.PixelFormats.Pbgra32);
+        rtb.Render(this);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        using var stream = File.Create(Path.Combine(dir, name + ".png"));
+        encoder.Save(stream);
+    }
+
     /// <summary>Verifies real WPF layout and routed tab actions on demand.</summary>
     public void VerifyShellInteractions()
     {
@@ -548,6 +589,9 @@ internal static class WeatherLocation
         s.WeatherLocation = located.Value.label;
         s.WeatherAutoLocated = true;
         PortableData.SaveSettings();
+        MainWindow.ReRenderIfVisible("dashboard");
+        MainWindow.ReRenderIfVisible("weather");
+        MainWindow.ReRenderIfVisible("home");
     }
 }
 
@@ -560,16 +604,34 @@ internal static class WeatherLocationService
     {
         try
         {
+            // Primary: ipapi.co; fallback: ipinfo.io. Both free, HTTPS, keyless.
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(7) };
-            using var response = await http.GetAsync("https://ipapi.co/json/");
-            if (!response.IsSuccessStatusCode) return null;
-            using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var root = doc.RootElement;
-            var lat = root.GetProperty("latitude").GetDouble();
-            var lon = root.GetProperty("longitude").GetDouble();
-            var city = root.TryGetProperty("city", out var cityEl) ? cityEl.GetString() : null;
-            var country = root.TryGetProperty("country_name", out var countryEl) ? countryEl.GetString() : null;
-            if (city is null) return null;
+            double lat; double lon; string city; string? country = null;
+            try
+            {
+                using var response = await http.GetAsync("https://ipapi.co/json/");
+                if (!response.IsSuccessStatusCode) throw new HttpRequestException("ipapi " + (int)response.StatusCode);
+                using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                var root = doc.RootElement;
+                lat = root.GetProperty("latitude").GetDouble();
+                lon = root.GetProperty("longitude").GetDouble();
+                city = root.TryGetProperty("city", out var cityEl) ? cityEl.GetString() ?? "" : "";
+                country = root.TryGetProperty("country_name", out var countryEl) ? countryEl.GetString() : null;
+                if (city.Length == 0) throw new KeyNotFoundException("city");
+            }
+            catch
+            {
+                using var response = await http.GetAsync("https://ipinfo.io/json");
+                if (!response.IsSuccessStatusCode) return null;
+                using var doc = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                var root = doc.RootElement;
+                var loc = (root.TryGetProperty("loc", out var locEl) ? locEl.GetString() : null)?.Split(',') ?? Array.Empty<string>();
+                if (loc.Length != 2 || !double.TryParse(loc[0], System.Globalization.CultureInfo.InvariantCulture, out lat)
+                    || !double.TryParse(loc[1], System.Globalization.CultureInfo.InvariantCulture, out lon)) return null;
+                city = root.TryGetProperty("city", out var cityEl) ? cityEl.GetString() ?? "" : "";
+                country = root.TryGetProperty("country", out var cEl) ? cEl.GetString() : null;
+                if (city.Length == 0) city = "Your area";
+            }
             return (lat, lon, string.IsNullOrEmpty(country) ? city : $"{city}, {country}");
         }
         catch (Exception ex)

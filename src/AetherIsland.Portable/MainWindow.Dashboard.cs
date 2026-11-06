@@ -71,7 +71,7 @@ public partial class MainWindow
         var grid = new Grid { Margin = new Thickness(2, 0, 2, 0) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(230) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(216) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(250) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(258) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
         grid.Children.Add(BuildWeatherCard());
@@ -221,7 +221,7 @@ public partial class MainWindow
     private static FrameworkElement BuildAppsCard()
     {
         var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        var wrap = new WrapPanel { ItemWidth = 80, ItemHeight = 64, Margin = new Thickness(2, 8, 0, 0) };
+        var wrap = new WrapPanel { ItemWidth = 78, ItemHeight = 57, Margin = new Thickness(2, 8, 0, 0) };
         foreach (var (label, iconKey, target, iconPath, tint) in new[]
         {
             ("File Explr…", "folder",  "shell:Downloads", (string?)Path.Combine(windir, "explorer.exe"), "#F6C453"),
@@ -271,7 +271,7 @@ public partial class MainWindow
         var stack = new StackPanel { Margin = new Thickness(16, 6, 12, 8) };
         stack.Children.Add(Ui.SectionTitle("clock", "Day"));
         stack.Children.Add(Ui.Spacer(0, 8));
-        stack.Children.Add(Ui.Text(fraction.ToString("P0", System.Globalization.CultureInfo.InvariantCulture), 26, true));
+        stack.Children.Add(Ui.Text(Math.Round(fraction * 100) + "%", 26, true));
         stack.Children.Add(Ui.Spacer(0, 8));
         stack.Children.Add(Ui.Bar(fraction, 195, 5));
         stack.Children.Add(Ui.Spacer(0, 8));

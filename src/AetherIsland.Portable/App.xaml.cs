@@ -30,10 +30,14 @@ public partial class App : System.Windows.Application
         MainWindow = window;
         window.Show();
 
+        var captureArg = e.Args.FirstOrDefault(a => a.StartsWith("--capture-views", StringComparison.OrdinalIgnoreCase));
+        var selfcheck = e.Args.Any(a => string.Equals(a, "--ui-selfcheck", StringComparison.OrdinalIgnoreCase));
+        if (captureArg is null && !selfcheck) StartupManager.SyncOnLaunch();
+
         // Explicit UI smoke mode runs only when requested by the Windows
         // acceptance workflow. This checks actual WPF layout and routed
         // button handlers, which compilation-only tests cannot cover.
-        if (e.Args.Any(a => string.Equals(a, "--ui-selfcheck", StringComparison.OrdinalIgnoreCase)))
+        if (selfcheck)
         {
             Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -46,6 +50,24 @@ public partial class App : System.Windows.Application
                 catch (Exception ex)
                 {
                     PortableData.Log("UI SELF CHECK", ex.ToString());
+                    Shutdown(1);
+                }
+            }), DispatcherPriority.ApplicationIdle);
+        }
+        else if (captureArg is not null)
+        {
+            var dir = captureArg.Split('=', 2) is { Length: 2 } parts ? parts[1] : "view-captures";
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    await window.CaptureAllViews(dir);
+                    PortableData.Log("VIEW CAPTURE", "Completed into " + dir);
+                    Shutdown(0);
+                }
+                catch (Exception ex)
+                {
+                    PortableData.Log("VIEW CAPTURE", ex.ToString());
                     Shutdown(1);
                 }
             }), DispatcherPriority.ApplicationIdle);
