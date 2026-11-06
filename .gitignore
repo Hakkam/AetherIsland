@@ -6,3 +6,4 @@ publish/
 *.db
 *.zip
 _scratch/
+release/

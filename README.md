@@ -1,65 +1,78 @@
 # Aether Island — Portable V2
 
-Lightweight, reference-led floating Windows utility. **Portable-first**: unzip and run, no administrator permission and no separate .NET Desktop runtime required.
+A reference-driven floating productivity island for Windows 10/11 (x64).
+Compact pill on top of your desktop; a click expands it into one dense dark
+panel with: dashboard (live weather, real quick toggles, app launcher, day
+progress), screen time with categories, now-playing + calendar, camera
+mirror, file shelf, tasks with reminders, notes, focus timers, wellbeing,
+weather detail, Wi-Fi/Bluetooth, verified AI quota, utilities and full
+settings — all local-first, no telemetry.
 
-## Current structure
+![dashboard](docs/screenshots/dashboard.png)
+![live](docs/screenshots/live-desktop-expanded.png)
 
-- `src/AetherIsland.Portable` — rebuilt WPF shell, fast navigation, app features, local persistence
-- `src/AetherIsland.Core` — shared AI usage contracts and domain logic
-- `src/AetherIsland.Windows` — Windows native APIs, SMTC helpers and credential encryption
-- `src/AetherIsland.Integrations` — OpenAI Admin reporting and live weather/media/Wi-Fi adapters
-- `tests/` — foundational logic tests; Windows visual and lifecycle acceptance is separate
-- `tools/publish-portable-v2.ps1` — self-contained Windows x64 ZIP build and SHA-256 checksum
+## Highlights
 
-The obsolete installer, precompiled release files, unused provider integrations and old WPF shell were removed **from this rebuild branch**. Historical versions are still available in Git history and the `AetherIsland` baseline.
+- **Reference-faithful UI** — layout, palette, toggles, widgets and module
+  set match the supplied reference photos/video; every module rendered for
+  evidence in `docs/screenshots/`.
+- **Real integrations, no fake toggles** — Wi-Fi/Bluetooth radios
+  (`Windows.Devices.Radios`), audio mute (endpoint API), dark mode,
+  keep-awake, screenshot → clipboard, lock, SMTC media, Open-Meteo weather
+  with IP auto-location, WLAN scan (honest about Windows' Location
+  permission), Bluetooth devices.
+- **Verified AI quota only** — OpenAI organization API monthly hard spend
+  limit (admin key, DPAPI-encrypted). No invented provider cards, ever.
+- **Portable & installed** — self-contained ZIP (no runtime, no admin) and
+  a per-user Inno Setup installer with a clean uninstaller that preserves
+  your `Data\` folder by default.
+- **Starts with Windows** — optional, standard per-user Run key that
+  self-heals when the folder moves.
+- **Light on resources** — measured 0.00% idle CPU over 60 s; event-driven
+  updates; no polling loops (see docs/FINAL_ACCEPTANCE_REPORT.md).
 
-## Launch
+## Get it
 
-1. Download the **AetherIsland-Portable-V2-win-x64** build artifact from the latest successful Windows build.
-2. Extract `AetherIsland-Portable-V2-win-x64.zip` completely to a folder with write permissions.
-3. Open `AetherIsland.exe`. Click the pill to expand; drag to move; choose a module from the icon rail. Right-click the notification-area icon for Exit / Settings / Reset position.
-4. User data remains in `Data/` alongside the executable. To uninstall, exit and delete the extracted directory. Never delete `Data/` before exporting notes and tasks you wish to retain.
+| Artifact | Where |
+|---|---|
+| Portable ZIP + SHA-256 | `release/portable-v2/` or CI artifact `AetherIsland-Portable-V2-win-x64` |
+| Installer + SHA-256 | `release/` or CI artifact `AetherIsland-Setup-win-x64` |
 
-### Main modules
+Extract/Install → run `AetherIsland.exe`. Details:
+docs/INSTALLATION.md · docs/MANUAL_INSTALL.md · docs/PORTABLE_USAGE.md.
 
-Dashboard (real OS shortcuts and day progress), live weather, Wi-Fi network status, Windows SMTC media, file shelf, tasks, notes, focus timer, opt-in coarse screen time and **verified OpenAI API monthly organization hard spend limit**.
+## Build
 
-There is **no support** for ChatGPT/Claude/Codex subscription usage percentage, OpenCode, Z.ai or any provider without a verified and documented remaining allowance. OpenAI API requires an organization Admin key and an enforcing monthly hard spend limit; otherwise the quota card remains absent. An ordinary ChatGPT subscription has no quota access through this API.
+```powershell
+dotnet build AetherIsland.slnx -c Release
+dotnet test AetherIsland.slnx
+./tools/publish-portable-v2.ps1        # portable ZIP + SHA-256
+./tools/package-installer.ps1          # Inno Setup installer (+ publish)
+```
 
-Credentials are protected by Windows DPAPI and bound to the current Windows account. Moving the portable directory to a different account requires re-entering credentials.
-
-## Performance
-
-Designed for no idle background integration polling. The UI clock updates once per minute, network and weather fetch only on demand, activity sampling requires explicit consent and runs approximately every 10 seconds, media session is initialized lazily, and focused countdown updates only while running.
-
-CPU/RAM thresholds are **target budgets, not measured results** until captured on real hardware.
+CI builds, tests, runs the live WPF self-check, captures every module view,
+packages both artifacts and uploads them (`.github/workflows/windows-release.yml`).
 
 ## Documentation
 
-- [Three-stage reconstruction plan](docs/PORTABLE_V2_THREE_PHASE_REBUILD.md)
-- [Portable V2 usage and limitations](docs/PORTABLE_V2_README.md)
-- [Engineering skill ownership and final acceptance](docs/PORTABLE_V2_ENGINEERING_OVERVIEW.md)
+- docs/ARCHITECTURE.md · docs/IMPLEMENTATION_AUDIT.md ·
+  docs/REFERENCE_FIDELITY_MATRIX.md · docs/FEATURE_COVERAGE.md
+- docs/INSTALLATION.md · docs/MANUAL_INSTALL.md · docs/PORTABLE_USAGE.md
+- docs/AI_PROVIDER_CAPABILITIES.md · docs/KNOWN_LIMITATIONS.md ·
+  docs/FINAL_ACCEPTANCE_REPORT.md
 
-## Building
+## Modules
 
-On Windows 10/11 with .NET SDK 10:
+Home · Dashboard (weather / quick toggles / apps / day) · File shelf · Tasks ·
+Notes · Focus · Media + Calendar (+ Mirror) · Wellbeing · Screen time ·
+Weather · Network · AI quota · Utilities — plus Settings (gear) and tray
+menu (Open, Refresh, Settings, Launch at startup, Reset position, Exit).
 
-```powershell
-./tools/publish-portable-v2.ps1
-```
+Keyboard: `Ctrl+Alt+Space` toggles the island · `Esc` collapses · drag the
+header or pill to move.
 
-Output: `release/portable-v2/AetherIsland-Portable-V2-win-x64.zip` and matching SHA-256 file.
+## Privacy
 
-**Release caveat:** The application code and build pipeline are not equivalent to a human-verified interactive build. Tests, compiled artifacts and on-device acceptance are reported separately; unsigned binaries may prompt Windows SmartScreen.
-
-## Windows UI interaction fix (2026-10-26)
-
-The previous portable V2 build displayed missing-glyph rectangles because navigation used Segoe MDL2 Assets Private Use characters. The new app draws its own vectors, and the draggable header has a separate grip from clickable navigation. Expanding snaps WPF window bounds before a small opacity fade, preventing layered-window hit-test geometry from lagging the visible pane.
-
-**Latest verified Windows preview:** [GitHub Actions run 40349350174](https://github.com/Hakkam/AetherIsland/actions/runs/40349350174). The full build passed 27 tests with no errors or warnings. A live WPF layout acceptance step expanded the window, checked that module content height was nonzero, invoked the ten navigation buttons, and collapsed the island. The portable app launched and stayed alive for idle sampling, with CPU reported at 0% (rounded) and working set 92.3 MiB on that runner. These results are *not* an actual on-device mouse/visual-fidelity guarantee.
-
-**Portable ZIP SHA-256:** `885bcd33f68842429fec4f8fd55cf5ecbd60c2f0563229022d61cd379fc89d10`.
-
-**After the next one-time ZIP extraction:** keep `Preview-AetherIsland.cmd` and `Preview-AetherIsland.ps1` beside `AetherIsland.exe`. Install [GitHub CLI](https://cli.github.com/) and authenticate once with `gh auth login`. Exit the app from its tray icon, then double-click `Preview-AetherIsland.cmd`: the launcher fetches the newest successful workflow artifact, verifies SHA-256, replaces app files without overwriting `Data/`, and starts the preview. It skips downloads when already current. It will not install GitHub CLI or authorize GitHub automatically.
-
-A full interactive desktop visual comparison against the three user-provided references is still required.
+Screen-time tracking is off by default and opt-in; it stores app names and
+coarse seconds locally (never titles, URLs or keystrokes). API keys are
+DPAPI-encrypted for the current Windows user. No telemetry.

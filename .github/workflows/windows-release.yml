@@ -46,7 +46,7 @@ jobs:
               if (Test-Path $log) { Get-Content -LiteralPath $log -Tail 35 | Write-Host }
               throw "WPF UI self-check failed (exit $($proc.ExitCode))"
             }
-            Write-Host 'WPF shell expand/collapse, visible content geometry and 10 navigation button handlers passed'
+            Write-Host 'WPF shell expand/collapse, visible content geometry and 13 navigation module handlers passed'
           }
           finally {
             if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
@@ -97,6 +97,37 @@ jobs:
           $checksum = (Get-FileHash 'release/portable-v2/AetherIsland-Portable-V2-win-x64.zip' -Algorithm SHA256).Hash.ToLowerInvariant()
           $expected = (Get-Content 'release/portable-v2/AetherIsland-Portable-V2-win-x64.zip.sha256' -Raw).Split(' ')[0]
           if ($checksum -ne $expected) { throw "Portable ZIP hash mismatch" }
+      - name: Capture every module view as PNG evidence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path 'release/portable-v2/win-x64/AetherIsland.exe').Path
+          $proc = Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe -Parent) -ArgumentList ("--capture-views=$(Get-Location)/view-captures") -PassThru
+          try {
+            if (!$proc.WaitForExit(90000)) { throw 'View capture timed out' }
+            if ($proc.ExitCode -ne 0) { throw "View capture failed with exit $($proc.ExitCode)" }
+            $pngs = Get-ChildItem 'view-captures/*.png'
+            if ($pngs.Count -lt 14) { throw "Expected at least 14 view captures, found $($pngs.Count)" }
+            Write-Host "Captured $($pngs.Count) module views"
+          }
+          finally {
+            if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+          }
+      - name: Build Inno Setup installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install innosetup -y --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
+          $env:AETHER_VERSION = '2.1.0'
+          & $iscc /Q installer/AetherIsland.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit $LASTEXITCODE" }
+          $setup = 'release/AetherIsland-Setup-win-x64.exe'
+          if (!(Test-Path $setup)) { throw 'Installer was not produced' }
+          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash
+          "$hash  AetherIsland-Setup-win-x64.exe" | Set-Content "$setup.sha256"
+          Write-Host "Installer SHA256: $hash"
       - name: Upload Windows Portable V2
         uses: actions/upload-artifact@v4
         with:
@@ -104,5 +135,21 @@ jobs:
           path: |
             release/portable-v2/AetherIsland-Portable-V2-win-x64.zip
             release/portable-v2/AetherIsland-Portable-V2-win-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherIsland-Setup-win-x64
+          path: |
+            release/AetherIsland-Setup-win-x64.exe
+            release/AetherIsland-Setup-win-x64.exe.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload module view captures
+        uses: actions/upload-artifact@v4
+        with:
+          name: AetherIsland-view-captures
+          path: view-captures/
           if-no-files-found: error
           retention-days: 30
