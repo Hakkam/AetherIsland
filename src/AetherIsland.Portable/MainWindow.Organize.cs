@@ -102,111 +102,216 @@ public partial class MainWindow
 
     private static UIElement RenderTasks()
     {
-        var stack = new StackPanel { Margin = new Thickness(14, 4, 12, 2) };
+        var stack = new StackPanel { Margin = new Thickness(12, 4, 12, 2) };
 
-        var header = new Grid();
+        // ---- header: title, done-progress, filter ----
+        var open = Tasks.Count(t => !t.Done && !t.Trashed);
+        var doneCount = Tasks.Count(t => t.Done && !t.Trashed);
+        var header = new Grid { Margin = new Thickness(2, 0, 2, 7) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var input = Ui.Input("Add a task… end with 15m, 2h or 14:30 for a reminder", 420);
-        var add = Ui.TextButton("+ Add task", () =>
+        var titleBlock = Ui.H(Ui.Text("Tasks", 13, true), Ui.Spacer(9));
+        var progressCol = Ui.V(
+            Ui.Text(doneCount == 0 ? "nothing done yet" : doneCount + " done", 8.3, false, Theme.Faint),
+            Ui.Bar(open + doneCount == 0 ? 0 : doneCount / (double)(open + doneCount), 110, 3.5));
+        progressCol.VerticalAlignment = VerticalAlignment.Center;
+        titleBlock.Children.Add(progressCol);
+        header.Children.Add(titleBlock);
+        var filterTabs = Ui.Segmented(new[] { "Active", "Done", "Trash" }, _taskTab, i => { _taskTab = i; ReRenderIfVisible("tasks"); });
+        header.Children.Add(filterTabs);
+        Grid.SetColumn(filterTabs, 2);
+        stack.Children.Add(header);
+
+        // ---- quick-add card with live reminder preview ----
+        var addCard = new System.Windows.Controls.Border
+        {
+            Background = Theme.SectionCard,
+            BorderBrush = Theme.CardEdge,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(11),
+            Padding = new Thickness(8, 7, 8, 6),
+            Margin = new Thickness(0, 0, 0, 7)
+        };
+        var addBody = new StackPanel();
+        var addRow = new Grid();
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        addRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var plusBtn = new System.Windows.Controls.Border
+        {
+            Width = 28, Height = 28, CornerRadius = new CornerRadius(9),
+            Background = Theme.Accent, VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0), Cursor = System.Windows.Input.Cursors.Hand,
+            ToolTip = "Add task (Enter)"
+        };
+        plusBtn.Child = Iconography.Draw("plus", 14, 2.2, Ui.Solid("#0B0E12"));
+        addRow.Children.Add(plusBtn);
+        var input = Ui.Input("Add a task…  end with 15m, 2h or 14:30 for a reminder", double.NaN);
+        input.HorizontalAlignment = HorizontalAlignment.Stretch;
+        input.Margin = new Thickness(0, 0, 8, 0);
+        Grid.SetColumn(input, 1);
+        addRow.Children.Add(input);
+        var addBtn = Ui.TextButton("Add", () => AddTaskFromInput(input), "Add task (Enter)", 10,
+            background: Theme.Chip, foreground: Theme.Text);
+        Grid.SetColumn(addBtn, 2);
+        addRow.Children.Add(addBtn);
+        addBody.Children.Add(addRow);
+
+        var previewRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(2, 5, 0, 0) };
+        var previewIcon = new ContentControl { Content = Iconography.Draw("clock", 11, 1.9, Theme.Faint), VerticalAlignment = VerticalAlignment.Center };
+        var previewText = Ui.Text("", 8.8, true, Theme.Accent);
+        previewRow.Children.Add(previewIcon);
+        previewRow.Children.Add(Ui.Spacer(5));
+        previewRow.Children.Add(previewText);
+        addBody.Children.Add(previewRow);
+
+        void UpdatePreview()
         {
             var raw = Ui.IsPlaceholder(input) ? "" : input.Text.Trim();
-            if (raw.Length == 0) return;
-            var (title, due) = TaskReminders.Parse(raw);
-            Tasks.Add(new PortableTask { Title = title, DueAt = due });
-            PortableData.Save("tasks.json", Tasks);
-            ReRenderIfVisible("tasks");
-        });
-        input.KeyDown += (_, e) => { if (e.Key == Key.Enter) { add.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent)); e.Handled = true; } };
-        header.Children.Add(input);
-        header.Children.Add(add);
-        Grid.SetColumn(add, 1);
-        stack.Children.Add(header);
-        stack.Children.Add(Ui.Spacer(0, 7));
+            var (_, due) = TaskReminders.Parse(raw);
+            if (raw.Length == 0 || due is null)
+            {
+                previewText.Foreground = Theme.Faint;
+                previewText.Text = raw.Length == 0
+                    ? "Tip: end with 15m, 2h or 14:30 and the task will remind you"
+                    : "No reminder scheduled — add 15m, 2h or 14:30 to the end";
+                previewIcon.Content = Iconography.Draw("clock", 11, 1.9, Theme.Faint);
+                return;
+            }
+            previewText.Foreground = Theme.Accent;
+            var at = due.Value;
+            previewText.Text = at > DateTime.Now
+                ? "Will remind at " + at.ToString("HH:mm") + "  (in " + ((int)(at - DateTime.Now).TotalMinutes + 1) + " min)"
+                : "Reminder time already passed — it will fire immediately";
+            previewIcon.Content = Iconography.Draw("bell", 11, 1.9, Theme.Accent);
+        }
+        input.TextChanged += (_, _) => UpdatePreview();
+        addCard.Child = addBody;
+        stack.Children.Add(addCard);
+        UpdatePreview();
 
-        var tabsRow = new Grid();
-        tabsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        tabsRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var counts = Ui.Text($"{Tasks.Count(t => !t.Done && !t.Trashed)} open · {Tasks.Count(t => t.Done && !t.Trashed)} done", 9, false, Theme.Faint);
-        tabsRow.Children.Add(counts);
-        tabsRow.Children.Add(Ui.Segmented(new[] { "Active", "Done", "Trash" }, _taskTab, i => { _taskTab = i; ReRenderIfVisible("tasks"); }));
-        Grid.SetColumn(tabsRow.Children[1], 1);
-        stack.Children.Add(tabsRow);
-        stack.Children.Add(Ui.Spacer(0, 4));
+        plusBtn.MouseLeftButtonDown += (_, _) => AddTaskFromInput(input);
 
+        // ---- list ----
         var host = new ContentControl();
         stack.Children.Add(host);
         _currentTaskList = host;
         _currentTaskInput = input;
-        host.Content = BuildTaskList(input);
+        host.Content = BuildTaskList();
         return Ui.WrapPage(stack);
     }
 
     private static ContentControl? _currentTaskList;
     private static TextBox? _currentTaskInput;
 
-    private static UIElement BuildTaskList(TextBox input)
+    private static void AddTaskFromInput(TextBox input)
+    {
+        var raw = Ui.IsPlaceholder(input) ? "" : input.Text.Trim();
+        if (raw.Length == 0) return;
+        var (title, due) = TaskReminders.Parse(raw);
+        Tasks.Add(new PortableTask { Title = title, DueAt = due, CreatedAt = DateTime.Now });
+        PortableData.Save("tasks.json", Tasks);
+        _taskTab = 0;
+        ReRenderIfVisible("tasks");
+    }
+
+    private static UIElement BuildTaskList()
     {
         var list = new StackPanel();
         var visible = _taskTab switch
         {
-            0 => Tasks.Where(t => !t.Done && !t.Trashed).ToList(),
-            1 => Tasks.Where(t => t.Done && !t.Trashed).ToList(),
-            _ => Tasks.Where(t => t.Trashed).ToList(),
+            0 => Tasks.Where(t => !t.Done && !t.Trashed).OrderBy(t => t.DueAt ?? DateTime.MaxValue).ToList(),
+            1 => Tasks.Where(t => t.Done && !t.Trashed).OrderByDescending(t => t.DoneAt ?? DateTime.MinValue).ToList(),
+            _ => Tasks.Where(t => t.Trashed).OrderByDescending(t => t.CreatedAt).ToList(),
         };
         if (visible.Count == 0)
         {
-            list.Children.Add(Ui.Text(
-                _taskTab == 0 ? "Nothing to do. Add a task above." :
-                _taskTab == 1 ? "No completed tasks yet." : "Trash is empty.",
-                10.5, false, Theme.Dim, TextAlignment.Center));
-            list.Margin = new Thickness(0, 14, 0, 6);
+            var empty = Ui.V(
+                new ContentControl { Content = Iconography.Draw(_taskTab == 0 ? "check" : "trash", 20, 1.9, Theme.Faint), HorizontalAlignment = HorizontalAlignment.Center },
+                Ui.Spacer(0, 6),
+                Ui.Text(
+                    _taskTab == 0 ? "All clear — nothing to do. Add your first task above." :
+                    _taskTab == 1 ? "No completed tasks yet — finish one and it lands here." : "Trash is empty.",
+                    10, false, Theme.Dim, TextAlignment.Center));
+            empty.Margin = new Thickness(0, 12, 0, 6);
+            list.Children.Add(empty);
             return list;
         }
         foreach (var task in visible)
         {
-            var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(24) });
+            var captured = task;
+            var card = new System.Windows.Controls.Border
+            {
+                CornerRadius = new CornerRadius(9),
+                Padding = new Thickness(8, 5, 6, 5),
+                Margin = new Thickness(0, 0, 0, 3),
+                Background = Brushes.Transparent
+            };
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var done = new Ui.Check(task.Done, on =>
+
+            var check = new Ui.Check(task.Done, on =>
             {
-                task.Done = on;
-                task.DoneAt = on ? DateTime.Now : null;
+                captured.Done = on;
+                captured.DoneAt = on ? DateTime.Now : null;
                 PortableData.Save("tasks.json", Tasks);
                 ReRenderIfVisible("tasks");
             }, task.Done ? "Mark as not done" : "Mark as done")
-            { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-            row.Children.Add(done);
-            var titleCol = Ui.V(Ui.Text(task.Title, 11, task.Done, Theme.Text, wrap: true));
-            if (task.DueAt is { } due)
-                titleCol.Children.Add(Ui.Text(due >= DateTime.Now ? $"Due {due:HH:mm}" : $"Overdue · {due:HH:mm}", 8.5, false,
-                    due >= DateTime.Now ? Theme.Dim : Theme.Bad));
-            titleCol.Margin = new Thickness(4, 0, 6, 0);
-            Grid.SetColumn(titleCol, 1);
-            row.Children.Add(titleCol);
-            if (_taskTab == 2)
+            { VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(check, 0);
+            row.Children.Add(check);
+
+            var textCol = Ui.V(Ui.Text(captured.Title, 10.5, captured.Done, captured.Done ? Theme.Dim : Theme.Text, wrap: true));
+            if (captured.DueAt is { } due)
             {
-                var restore = Ui.TextButton("Restore", () =>
+                var overdue = due < DateTime.Now && !captured.Done;
+                textCol.Children.Add(Ui.Text(
+                    overdue ? "overdue · was " + due.ToString("HH:mm") : "reminds at " + due.ToString("HH:mm"),
+                    8.3, false, overdue ? Theme.Bad : Theme.Accent));
+            }
+            textCol.Margin = new Thickness(6, 0, 6, 0);
+            textCol.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(textCol, 1);
+            row.Children.Add(textCol);
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            if (_taskTab == 1)
+            {
+                actions.Children.Add(Ui.TextButton("Reopen", () =>
                 {
-                    task.Trashed = false;
+                    captured.Done = false;
+                    captured.DoneAt = null;
                     PortableData.Save("tasks.json", Tasks);
                     ReRenderIfVisible("tasks");
-                }, "Restore task", 8.5, background: Theme.Chip, foreground: Theme.Text);
-                Grid.SetColumn(restore, 2);
-                row.Children.Add(restore);
+                }, "Back to active", 8.5, background: Brushes.Transparent, foreground: Theme.Dim));
             }
-            var trash = Iconography.IconButton("trash", _taskTab == 2 ? "Delete forever" : "Move to trash", 24, () =>
+            if (_taskTab == 2)
             {
-                if (_taskTab == 2) Tasks.Remove(task);
-                else task.Trashed = true;
+                actions.Children.Add(Ui.TextButton("Restore", () =>
+                {
+                    captured.Trashed = false;
+                    PortableData.Save("tasks.json", Tasks);
+                    ReRenderIfVisible("tasks");
+                }, "Restore task", 8.5, background: Brushes.Transparent, foreground: Theme.Text));
+            }
+            actions.Children.Add(Iconography.IconButton("trash", _taskTab == 2 ? "Delete forever" : "Move to trash", 24, () =>
+            {
+                if (_taskTab == 2) Tasks.Remove(captured);
+                else captured.Trashed = true;
                 PortableData.Save("tasks.json", Tasks);
                 ReRenderIfVisible("tasks");
-            }, 12);
-            Grid.SetColumn(trash, 3);
-            row.Children.Add(trash);
-            list.Children.Add(row);
+            }, 12));
+            Grid.SetColumn(actions, 2);
+            row.Children.Add(actions);
+
+            card.Child = row;
+            // hover: the row lights up like the reference's interactive surfaces
+            card.MouseEnter += (_, _) => card.Background = Theme.Chip;
+            card.MouseLeave += (_, _) => card.Background = Brushes.Transparent;
+            list.Children.Add(card);
         }
         return list;
     }

@@ -73,10 +73,10 @@ public partial class MainWindow : Window
         KeyDown += WindowKeyDown;
         Deactivated += (_, _) =>
         {
-            // Click outside (or focus moved elsewhere) while expanded →
-            // minimize to the pill. Collapse only swaps internal visuals and
-            // resizes, so this cannot make the app disappear. Pin overrides.
-            if (_expanded && !_pinned && PortableData.Settings.CollapseOnOutsideClick)
+            // Focus moved anywhere else while expanded → minimize to the
+            // pill. Collapse only swaps internal visuals and resizes, so
+            // this can never make the app disappear. Pin overrides.
+            if (_expanded && !_pinned)
                 Collapse();
         };
         _tray = BuildTray();
@@ -235,6 +235,7 @@ public partial class MainWindow : Window
         if (!PortableData.Settings.ReducedMotion)
             Panel.BeginAnimation(UIElement.OpacityProperty,
                 new DoubleAnimation(0, 1, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
+        ScheduleGeometryGuard(PanelWidth, PanelHeight);
         Activate();
         InstallOutsideClickHook();
     }
@@ -269,10 +270,38 @@ public partial class MainWindow : Window
                 Panel.Visibility = Visibility.Collapsed;
                 Panel.Opacity = 1;
                 Pill.Opacity = 1;
+                ForceGeometry(PillWidth, PillHeight);
             };
             AnimateWindow(PillWidth, PillHeight, x, y, shrink);
         }
+        // Self-healing: whatever races with the animation (rapid clicks,
+        // focus loss mid-flight, DPI changes), the resting pill must end up
+        // exactly pill-sized and topmost.
+        ScheduleGeometryGuard(PillWidth, PillHeight);
         UpdatePillStatus();
+    }
+
+    private void ScheduleGeometryGuard(double width, double height)
+    {
+        var delay = PortableData.Settings.ReducedMotion
+            ? TimeSpan.FromMilliseconds(30)
+            : MotionDuration + TimeSpan.FromMilliseconds(80);
+        _ = System.Threading.Tasks.Task.Delay(delay).ContinueWith(_ =>
+            Dispatcher.BeginInvoke(() => ForceGeometry(width, height)));
+    }
+
+    /// <summary>Final word on window geometry for the current state; also
+    /// re-asserts always-on-top after fullscreen apps steal it.</summary>
+    private void ForceGeometry(double width, double height)
+    {
+        BeginAnimation(WidthProperty, null);
+        BeginAnimation(HeightProperty, null);
+        BeginAnimation(LeftProperty, null);
+        BeginAnimation(TopProperty, null);
+        Width = width;
+        Height = height;
+        ClampToVisibleMonitor();
+        Topmost = true;
     }
 
     // ---------------- click outside collapses (popup behavior) ----------------
