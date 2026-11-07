@@ -351,10 +351,15 @@ internal static class Ui
         }
     }
 
-    /// <summary>Themed round check box for task rows (matches the island aesthetic).</summary>
-    internal sealed class Check : Canvas
+    /// <summary>
+    /// Themed round task check with meaningful state colors:
+    /// green filled = done, orange ring = pending, red ring = overdue.
+    /// The tick is grid-centered inside the box.
+    /// </summary>
+    internal sealed class Check : Grid
     {
         private bool _isChecked;
+        private bool _overdue;
         private readonly Border _box;
         private readonly UIElement _tick;
 
@@ -366,18 +371,23 @@ internal static class Ui
             set { _isChecked = value; Render(); }
         }
 
-        public Check(bool isChecked, Action<bool>? onChanged = null, string? tooltip = null)
+        public Check(bool isChecked, bool overdue, Action<bool>? onChanged = null, string? tooltip = null)
         {
             _isChecked = isChecked;
+            _overdue = overdue;
             Width = 18; Height = 18;
             Cursor = System.Windows.Input.Cursors.Hand;
             if (tooltip != null) ToolTip = tooltip;
             _box = new Border
             {
                 Width = 18, Height = 18, CornerRadius = new CornerRadius(6),
-                BorderThickness = new Thickness(1.6)
+                BorderThickness = new Thickness(1.6),
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
             };
-            _tick = Iconography.Draw("check", 10, 2.2, Brushes.White);
+            _tick = Iconography.Draw("check", 11, 2.4, Brushes.White);
+            ((System.Windows.FrameworkElement)_tick).HorizontalAlignment = HorizontalAlignment.Center;
+            ((System.Windows.FrameworkElement)_tick).VerticalAlignment = VerticalAlignment.Center;
             Children.Add(_box);
             Children.Add(_tick);
             Render();
@@ -388,17 +398,51 @@ internal static class Ui
         {
             if (_isChecked)
             {
-                _box.Background = Theme.Accent;
-                _box.BorderBrush = Theme.Accent;
+                _box.Background = Theme.Good;          // done → green
+                _box.BorderBrush = Theme.Good;
                 _tick.Visibility = Visibility.Visible;
+            }
+            else if (_overdue)
+            {
+                _box.Background = Brushes.Transparent;
+                _box.BorderBrush = Theme.Bad;          // overdue → red ring
+                _tick.Visibility = Visibility.Hidden;
             }
             else
             {
                 _box.Background = Brushes.Transparent;
-                _box.BorderBrush = Theme.Faint;
+                _box.BorderBrush = Theme.Orange;       // pending → orange ring
                 _tick.Visibility = Visibility.Hidden;
             }
         }
+    }
+
+    /// <summary>Segmented horizontal bar with per-state colors (tasks header).</summary>
+    internal static FrameworkElement MultiBar(IReadOnlyList<(double ratio, Brush brush)> segments, double width, double height = 4.5)
+    {
+        var host = new Border
+        {
+            Width = width, Height = height,
+            CornerRadius = new CornerRadius(height / 2),
+            ClipToBounds = true,
+            Background = Theme.Track
+        };
+        var strip = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var (ratio, brush) in segments)
+            if (ratio > 0)
+                strip.Children.Add(new Border { Width = width * Math.Clamp(ratio, 0, 1), Height = height, Background = brush });
+        host.Child = strip;
+        return host;
+    }
+
+    /// <summary>Small colored status dot with a text label (header counters).</summary>
+    internal static StackPanel Dot(Brush color, string label, Brush? labelColor = null)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        row.Children.Add(new System.Windows.Shapes.Ellipse
+        { Width = 6, Height = 6, Fill = color, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(Text(" " + label, 8.5, false, labelColor ?? color));
+        return row;
     }
 
     /// <summary>Reference-style donut with proportional colored arcs and a center label.</summary>

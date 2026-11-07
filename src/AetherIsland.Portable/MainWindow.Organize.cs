@@ -104,17 +104,39 @@ public partial class MainWindow
     {
         var stack = new StackPanel { Margin = new Thickness(12, 4, 12, 2) };
 
-        // ---- header: title, done-progress, filter ----
-        var open = Tasks.Count(t => !t.Done && !t.Trashed);
+        // ---- header: title, color-coded status bar, filter ----
         var doneCount = Tasks.Count(t => t.Done && !t.Trashed);
+        var overdueCount = Tasks.Count(t => !t.Done && !t.Trashed && t.DueAt is { } d && d < DateTime.Now);
+        var activeCount = Tasks.Count(t => !t.Done && !t.Trashed) - overdueCount;
+        var totalTasks = activeCount + overdueCount + doneCount;
         var header = new Grid { Margin = new Thickness(2, 0, 2, 7) };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var titleBlock = Ui.H(Ui.Text("Tasks", 13, true), Ui.Spacer(9));
+        StackPanel statusCounts = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        if (totalTasks == 0)
+            statusCounts.Children.Add(Ui.Text("no tasks yet", 8.5, false, Theme.Faint));
+        else
+        {
+            statusCounts.Children.Add(Ui.Dot(Theme.Orange, activeCount + " active"));
+            statusCounts.Children.Add(Ui.Spacer(7));
+            if (overdueCount > 0)
+            {
+                statusCounts.Children.Add(Ui.Dot(Theme.Bad, overdueCount + " overdue"));
+                statusCounts.Children.Add(Ui.Spacer(7));
+            }
+            statusCounts.Children.Add(Ui.Dot(Theme.Good, doneCount + " done"));
+        }
         var progressCol = Ui.V(
-            Ui.Text(doneCount == 0 ? "nothing done yet" : doneCount + " done", 8.3, false, Theme.Faint),
-            Ui.Bar(open + doneCount == 0 ? 0 : doneCount / (double)(open + doneCount), 110, 3.5));
+            statusCounts,
+            Ui.Spacer(0, 3),
+            Ui.MultiBar(new (double, Brush)[]
+            {
+                (totalTasks == 0 ? 0 : activeCount / (double)totalTasks, Theme.Orange),
+                (totalTasks == 0 ? 0 : overdueCount / (double)totalTasks, Theme.Bad),
+                (totalTasks == 0 ? 0 : doneCount / (double)totalTasks, Theme.Good),
+            }, 150));
         progressCol.VerticalAlignment = VerticalAlignment.Center;
         titleBlock.Children.Add(progressCol);
         header.Children.Add(titleBlock);
@@ -253,13 +275,14 @@ public partial class MainWindow
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            var check = new Ui.Check(task.Done, on =>
+            var isOverdue = task.DueAt is { } dd && dd < DateTime.Now && !task.Done;
+            var check = new Ui.Check(task.Done, isOverdue, on =>
             {
                 captured.Done = on;
                 captured.DoneAt = on ? DateTime.Now : null;
                 PortableData.Save("tasks.json", Tasks);
                 ReRenderIfVisible("tasks");
-            }, task.Done ? "Mark as not done" : "Mark as done")
+            }, task.Done ? "Done — click to reopen" : isOverdue ? "Overdue — click to mark done" : "Mark as done")
             { VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(check, 0);
             row.Children.Add(check);
