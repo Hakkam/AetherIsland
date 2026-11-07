@@ -98,6 +98,7 @@ public partial class MainWindow : Window
         {
             RemoveOutsideClickHook();
             KeyboardBlocker.Set(false); // fail-safe: typing returns when the island exits
+            StopPillGlow();
             _clock.Stop();
             _activity.Dispose();
             _media.Dispose();
@@ -240,6 +241,7 @@ public partial class MainWindow : Window
         Pill.Visibility = Visibility.Collapsed;
         Panel.Visibility = Visibility.Visible;
         Panel.Opacity = 1;
+        StopPillGlow();
         EnsureMediaStarted();
         SnapWindow(PanelWidth, PanelHeight, x, y);
         ScheduleGeometryGuard(PanelWidth, PanelHeight);
@@ -259,6 +261,7 @@ public partial class MainWindow : Window
         Pill.Visibility = Visibility.Visible;
         Pill.Opacity = 1;
         SnapWindow(PillWidth, PillHeight, x, y);
+        StartPillGlow();
         // Self-healing: whatever races with the swap (rapid clicks, focus
         // loss, DPI changes), the resting pill must end up exactly
         // pill-sized and topmost.
@@ -271,6 +274,73 @@ public partial class MainWindow : Window
         var delay = TimeSpan.FromMilliseconds(30);
         _ = System.Threading.Tasks.Task.Delay(delay).ContinueWith(_ =>
             Dispatcher.BeginInvoke(() => ForceGeometry(width, height)));
+    }
+
+    // ---------------- minimized pill border glow ----------------
+
+    private RotateTransform? _pillGlowTransform;
+    private System.Windows.Media.Effects.DropShadowEffect? _pillGlowShadow;
+    private System.Windows.Threading.DispatcherTimer? _glowBreath;
+
+    /// <summary>A soft accent streak travels around the pill border with a
+    /// breathing outer glow — active only while minimized, subtle by design,
+    /// and skipped entirely under reduced motion.</summary>
+    private void StartPillGlow()
+    {
+        StopPillGlow();
+        if (PortableData.Settings.ReducedMotion)
+        {
+            Pill.BorderBrush = Theme.PanelEdge;
+            return;
+        }
+        var accent = Theme.AccentColor;
+        var baseColor = (Color)System.Windows.Media.ColorConverter.ConvertFromString(Theme.IsDark ? "#262C36" : "#C7CEDA");
+        var brush = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 1),
+            GradientStops =
+            {
+                new GradientStop(accent, 0.0),
+                new GradientStop(baseColor, 0.22),
+                new GradientStop(baseColor, 0.78),
+                new GradientStop(Color.FromArgb(160, accent.R, accent.G, accent.B), 1.0),
+            }
+        };
+        _pillGlowTransform = new RotateTransform(0, 0.5, 0.5);
+        brush.RelativeTransform = _pillGlowTransform;
+        Pill.BorderBrush = brush;
+        _pillGlowTransform.BeginAnimation(RotateTransform.AngleProperty,
+            new DoubleAnimation(0, 360, TimeSpan.FromMilliseconds(4200)) { RepeatBehavior = RepeatBehavior.Forever });
+
+        _pillGlowShadow = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            Color = accent,
+            BlurRadius = 16,
+            ShadowDepth = 0,
+            Opacity = 0.35
+        };
+        Pill.Effect = _pillGlowShadow;
+        _glowBreath = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+        var phase = 0.0;
+        _glowBreath.Tick += (_, _) =>
+        {
+            phase += 0.06;
+            if (_pillGlowShadow != null)
+                _pillGlowShadow.Opacity = 0.3 + 0.18 * (0.5 + 0.5 * Math.Sin(phase));
+        };
+        _glowBreath.Start();
+    }
+
+    private void StopPillGlow()
+    {
+        _glowBreath?.Stop();
+        _glowBreath = null;
+        _pillGlowTransform?.BeginAnimation(RotateTransform.AngleProperty, null);
+        _pillGlowTransform = null;
+        _pillGlowShadow = null;
+        Pill.Effect = null;
+        Pill.BorderBrush = Theme.PanelEdge;
     }
 
     /// <summary>Final word on window geometry for the current state; also
@@ -570,6 +640,7 @@ public partial class MainWindow : Window
     {
         Theme.Apply(PortableData.Settings.Theme);
         ApplyThemeChrome();
+        if (!_expanded) StartPillGlow(); // rebuild glow with the new theme/accent
         Navigate(_current);
     }
 
