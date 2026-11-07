@@ -135,6 +135,7 @@ public partial class MainWindow : Window
         Iconography.SetIcon(AwakeButton, "coffee", 16, Theme.Dim);
         Iconography.SetIcon(SettingsButton, "settings", 16, Theme.Dim);
         RefreshAwakeButton();
+        RefreshKeyboardButton();
     }
 
     private void StyleActiveNav()
@@ -238,11 +239,9 @@ public partial class MainWindow : Window
         var y = Top;
         Pill.Visibility = Visibility.Collapsed;
         Panel.Visibility = Visibility.Visible;
+        Panel.Opacity = 1;
         EnsureMediaStarted();
-        AnimateWindow(PanelWidth, PanelHeight, x, y);
-        if (!PortableData.Settings.ReducedMotion)
-            Panel.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(0, 1, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
+        SnapWindow(PanelWidth, PanelHeight, x, y);
         ScheduleGeometryGuard(PanelWidth, PanelHeight);
         Activate();
         InstallOutsideClickHook();
@@ -255,45 +254,21 @@ public partial class MainWindow : Window
         RemoveOutsideClickHook();
         var x = Left + (Width - PillWidth) / 2;
         var y = Top;
-        if (PortableData.Settings.ReducedMotion)
-        {
-            Panel.Visibility = Visibility.Collapsed;
-            Pill.Visibility = Visibility.Visible;
-            AnimateWindow(PillWidth, PillHeight, x, y);
-        }
-        else
-        {
-            // Shrink into the pill while the panel fades out of it — the
-            // reference video's eased transition, in reverse.
-            Pill.Visibility = Visibility.Visible;
-            Pill.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(0, 1, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
-            Panel.BeginAnimation(UIElement.OpacityProperty,
-                new DoubleAnimation(1, 0, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
-            var shrink = new DoubleAnimation(Width, PillWidth, MotionDuration)
-            { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop };
-            shrink.Completed += (_, _) =>
-            {
-                if (_expanded) return; // a rapid re-expand took over
-                Panel.Visibility = Visibility.Collapsed;
-                Panel.Opacity = 1;
-                Pill.Opacity = 1;
-                ForceGeometry(PillWidth, PillHeight);
-            };
-            AnimateWindow(PillWidth, PillHeight, x, y, shrink);
-        }
-        // Self-healing: whatever races with the animation (rapid clicks,
-        // focus loss mid-flight, DPI changes), the resting pill must end up
-        // exactly pill-sized and topmost.
+        Panel.Visibility = Visibility.Collapsed;
+        Panel.Opacity = 1;
+        Pill.Visibility = Visibility.Visible;
+        Pill.Opacity = 1;
+        SnapWindow(PillWidth, PillHeight, x, y);
+        // Self-healing: whatever races with the swap (rapid clicks, focus
+        // loss, DPI changes), the resting pill must end up exactly
+        // pill-sized and topmost.
         ScheduleGeometryGuard(PillWidth, PillHeight);
         UpdatePillStatus();
     }
 
     private void ScheduleGeometryGuard(double width, double height)
     {
-        var delay = PortableData.Settings.ReducedMotion
-            ? TimeSpan.FromMilliseconds(30)
-            : MotionDuration + TimeSpan.FromMilliseconds(80);
+        var delay = TimeSpan.FromMilliseconds(30);
         _ = System.Threading.Tasks.Task.Delay(delay).ContinueWith(_ =>
             Dispatcher.BeginInvoke(() => ForceGeometry(width, height)));
     }
@@ -380,8 +355,9 @@ public partial class MainWindow : Window
         return Native.CallNextHookEx(_outsideHook, code, wParam, lParam);
     }
 
-    private void AnimateWindow(double width, double height, double x, double y, DoubleAnimation? widthOverride = null)
+    private void SnapWindow(double width, double height, double x, double y)
     {
+        // Instant transitions per user preference — no window animation.
         BeginAnimation(WidthProperty, null);
         BeginAnimation(HeightProperty, null);
         BeginAnimation(LeftProperty, null);
@@ -389,31 +365,9 @@ public partial class MainWindow : Window
         var area = SystemParameters.WorkArea;
         x = Math.Clamp(x, area.Left, Math.Max(area.Left, area.Right - width));
         y = Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - height));
-        var oldWidth = Width; var oldHeight = Height;
-        var oldLeft = Left; var oldTop = Top;
-        Width = width; Height = height; Left = x; Top = y;   // base = final state
+        Width = width; Height = height; Left = x; Top = y;
+        Topmost = true;
         UpdateLayout();
-        if (PortableData.Settings.ReducedMotion) return;
-
-        // Ease the real window bounds from the previous rect to the new one;
-        // animated values override the (final) base while in flight.
-        void Animate(DependencyProperty dp, double from, DoubleAnimation? custom = null)
-        {
-            var anim = custom ?? new DoubleAnimation(from, (double)GetValue(dp),
-                MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop };
-            BeginAnimation(dp, anim);
-        }
-        var animateBounds = Math.Abs(oldWidth - width) > 0.5 || Math.Abs(oldHeight - height) > 0.5;
-        if (animateBounds)
-        {
-            Animate(WidthProperty, oldWidth, widthOverride);
-            Animate(HeightProperty, oldHeight);
-        }
-        if (Math.Abs(oldLeft - x) > 0.5 || Math.Abs(oldTop - y) > 0.5)
-        {
-            Animate(LeftProperty, oldLeft);
-            Animate(TopProperty, oldTop);
-        }
     }
 
     private void ClampToVisibleMonitor()
@@ -511,7 +465,7 @@ public partial class MainWindow : Window
             status = session.Title;
         }
         else if (Toggles.KeepAwakeOn) { status = "Keeping awake"; dot = Theme.Orange; }
-        else if (KeyboardBlocker.IsOn) { status = "Laptop keyboard off"; dot = Theme.Orange; }
+        else if (KeyboardBlocker.IsOn) { status = "Keyboard off"; dot = Theme.Orange; }
         else status = "Aether Island";
         PillStatus.Text = status;
         PillDot.Fill = dot;
@@ -569,6 +523,27 @@ public partial class MainWindow : Window
 
     internal void RefreshAwakeButton()
         => Iconography.SetIcon(AwakeButton, "coffee", 16, Toggles.KeepAwakeOn ? Theme.Orange : Theme.Dim);
+
+    private void KeyboardButtonClick(object sender, RoutedEventArgs e) => ToggleKeyboardBlock();
+
+    internal void ToggleKeyboardBlock()
+    {
+        var on = !KeyboardBlocker.IsOn;
+        KeyboardBlocker.Set(on);
+        RefreshKeyboardButton();
+        UpdatePillStatus();
+        App.NotifyBalloon("Keyboard", on
+            ? "Laptop keyboard is OFF. Click the keyboard icon to restore it."
+            : "Laptop keyboard is back on.");
+    }
+
+    internal void RefreshKeyboardButton()
+    {
+        KeyboardButton.ToolTip = KeyboardBlocker.IsOn
+            ? "Laptop keyboard is OFF — click to restore"
+            : "Turn off the laptop keyboard";
+        Iconography.SetIcon(KeyboardButton, "keyboard", 16, KeyboardBlocker.IsOn ? Theme.Orange : Theme.Dim);
+    }
 
     private void SettingsClick(object sender, RoutedEventArgs e) => Navigate("settings");
 

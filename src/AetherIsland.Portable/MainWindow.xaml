@@ -29,6 +29,7 @@
       <TextBlock x:Name="HeaderDate" VerticalAlignment="Center" FontSize="9.5" Margin="0,0,12,0" Background="Transparent"/>
       <Button x:Name="RefreshButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Refresh" Click="RefreshClick"/>
       <Button x:Name="AwakeButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Keep awake" Click="AwakeClick"/>
+      <Button x:Name="KeyboardButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Laptop keyboard" Click="KeyboardButtonClick"/>
       <Button x:Name="SettingsButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Settings" Click="SettingsClick"/>
      </StackPanel>
     </Grid>

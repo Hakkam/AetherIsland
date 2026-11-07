@@ -132,7 +132,7 @@ public partial class MainWindow
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var label = Ui.V(
             Ui.Text(isOff ? "Turn the keyboard back on" : "Turn off the keyboard", 10.5),
-            Ui.Text(isOff ? "One click restores typing instantly" : "Instant · no admin · every key is ignored", 8.3, false, Theme.Faint));
+            Ui.Text(isOff ? "One click — or the keyboard icon in the header" : "Instant · no admin · also in the header (keyboard icon)", 8.3, false, Theme.Faint));
         Grid.SetColumn(label, 0);
         row.Children.Add(label);
         var sw = new Ui.Switch(isOff, on =>
