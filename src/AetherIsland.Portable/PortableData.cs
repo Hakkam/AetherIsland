@@ -113,6 +113,9 @@ public sealed class PortableSettings
     public bool WeatherAutoLocated { get; set; }
 
     // Day schedule
+    public string PillTitle { get; set; } = "Aether Island";   // text beside the clock while minimized
+
+    // Day schedule
     public int WakeHour { get; set; } = 7;
     public int BedHour { get; set; } = 23;
 

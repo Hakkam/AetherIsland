@@ -141,12 +141,15 @@ public partial class MainWindow : Window
 
     private void StyleActiveNav()
     {
+        var accent = Theme.AccentColor;
+        var tint = new SolidColorBrush(Color.FromArgb(64, accent.R, accent.G, accent.B));
+        var accentBrush = Theme.Accent;
         foreach (var (id, button) in _buttons)
         {
             var active = id == _current;
-            button.Background = active ? Ui.Solid(Theme.IsDark ? "#39414F" : "#D8DEE8") : Brushes.Transparent;
+            button.Background = active ? tint : Brushes.Transparent;
             button.Content = Iconography.Draw(
-                Sections.First(s => s.Id == id).Icon, 15.5, 1.8, active ? Theme.Text : Theme.Dim);
+                Sections.First(s => s.Id == id).Icon, 16, 1.9, active ? accentBrush : Theme.Dim);
         }
     }
 
@@ -536,7 +539,11 @@ public partial class MainWindow : Window
         }
         else if (Toggles.KeepAwakeOn) { status = "Keeping awake"; dot = Theme.Orange; }
         else if (KeyboardBlocker.IsOn) { status = "Keyboard off"; dot = Theme.Orange; }
-        else status = "Aether Island";
+        else
+        {
+            var title = PortableData.Settings.PillTitle;
+            status = string.IsNullOrWhiteSpace(title) ? "Aether Island" : title.Trim();
+        }
         PillStatus.Text = status;
         PillDot.Fill = dot;
         PillStatus.Foreground = Theme.Dim;

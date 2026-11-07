@@ -89,6 +89,24 @@ public partial class MainWindow
         left.Children.Add(appearance.Card);
         left.Children.Add(Ui.Spacer(0, 10));
 
+        // ---- minimized pill title ----
+        var pill = SettingsCard("home", "Minimized title", "The words beside the clock on the pill");
+        var titleInput = Ui.Input("Aether Island", 220, s.PillTitle);
+        pill.Body.Children.Add(Ui.H(titleInput, Ui.TextButton("Save", () =>
+        {
+            var value = Ui.IsPlaceholder(titleInput) ? "" : titleInput.Text.Trim();
+            if (value.Length == 0) value = "Aether Island";
+            if (value.Length > 30) value = value[..30];
+            s.PillTitle = value;
+            PortableData.SaveSettings();
+            Win.UpdatePillStatus();
+        }, "Apply title", 9.5, background: Theme.Accent, foreground: Ui.Solid("#0B0E12"))));
+        pill.Body.Children.Add(Ui.Text(
+            "Shown when nothing else needs attention — a running timer, playing media or the keyboard-off state temporarily replace it.",
+            8.3, false, Theme.Faint, wrap: true));
+        left.Children.Add(pill.Card);
+        left.Children.Add(Ui.Spacer(0, 10));
+
         // ---- day schedule card ----
         var schedule = SettingsCard("clock", "Day schedule", "Drives the dashboard progress bar");
         schedule.Body.Children.Add(BuildStepper("Wake", s.WakeHour, v =>

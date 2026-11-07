@@ -289,8 +289,8 @@ internal static class Ui
 
     internal static void StyleSegment(Button b, bool active)
     {
-        b.Background = active ? Theme.ChipOn : Brushes.Transparent;
-        b.Foreground = active ? Solid("#161B22") : Theme.Dim;
+        b.Background = active ? Theme.Accent : Brushes.Transparent;
+        b.Foreground = active ? Solid("#0B0E12") : Theme.Dim;
     }
 
     /// <summary>
