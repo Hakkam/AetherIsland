@@ -170,26 +170,14 @@ public partial class MainWindow
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var done = new CheckBox
+            var done = new Ui.Check(task.Done, on =>
             {
-                IsChecked = task.Done,
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Center
-            };
-            done.Checked += (_, _) =>
-            {
-                task.Done = true;
-                task.DoneAt = DateTime.Now;
+                task.Done = on;
+                task.DoneAt = on ? DateTime.Now : null;
                 PortableData.Save("tasks.json", Tasks);
                 ReRenderIfVisible("tasks");
-            };
-            done.Unchecked += (_, _) =>
-            {
-                task.Done = false;
-                task.DoneAt = null;
-                PortableData.Save("tasks.json", Tasks);
-                ReRenderIfVisible("tasks");
-            };
+            }, task.Done ? "Mark as not done" : "Mark as done")
+            { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
             row.Children.Add(done);
             var titleCol = Ui.V(Ui.Text(task.Title, 11, task.Done, Theme.Text, wrap: true));
             if (task.DueAt is { } due)

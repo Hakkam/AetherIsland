@@ -293,6 +293,102 @@ internal static class Ui
         b.Foreground = active ? Solid("#161B22") : Theme.Dim;
     }
 
+    /// <summary>
+    /// Creative pill switch (34x20 track, sliding thumb, accent when on) used
+    /// by Settings. Themed on every render.
+    /// </summary>
+    internal sealed class Switch : Canvas
+    {
+        private readonly Border _track;
+        private readonly Border _thumb;
+        private bool _on;
+        private readonly double _w = 36, _h = 20;
+
+        public event Action<bool>? Toggled;
+
+        public bool IsOn
+        {
+            get => _on;
+            set { _on = value; Render(); }
+        }
+
+        public Switch(bool isOn, Action<bool>? onChanged = null, string? tooltip = null)
+        {
+            _on = isOn;
+            Width = _w; Height = _h;
+            Cursor = System.Windows.Input.Cursors.Hand;
+            if (tooltip != null) ToolTip = tooltip;
+            _track = new Border { Width = _w, Height = _h, CornerRadius = new CornerRadius(_h / 2) };
+            _thumb = new Border
+            {
+                Width = _h - 4, Height = _h - 4, CornerRadius = new CornerRadius((_h - 4) / 2),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            Children.Add(_track);
+            Children.Add(_thumb);
+            Render();
+            MouseLeftButtonDown += (_, _) => { _on = !_on; Render(); Toggled?.Invoke(_on); };
+        }
+
+        private void Render()
+        {
+            _track.Background = _on ? Theme.Accent : Theme.Track;
+            SetLeft(_thumb, _on ? _w - _h + 2 : 2);
+            SetTop(_thumb, 2);
+            _thumb.Background = Brushes.White;
+        }
+    }
+
+    /// <summary>Themed round check box for task rows (matches the island aesthetic).</summary>
+    internal sealed class Check : Canvas
+    {
+        private bool _isChecked;
+        private readonly Border _box;
+        private readonly UIElement _tick;
+
+        public event Action<bool>? Toggled;
+
+        public bool IsChecked
+        {
+            get => _isChecked;
+            set { _isChecked = value; Render(); }
+        }
+
+        public Check(bool isChecked, Action<bool>? onChanged = null, string? tooltip = null)
+        {
+            _isChecked = isChecked;
+            Width = 18; Height = 18;
+            Cursor = System.Windows.Input.Cursors.Hand;
+            if (tooltip != null) ToolTip = tooltip;
+            _box = new Border
+            {
+                Width = 18, Height = 18, CornerRadius = new CornerRadius(6),
+                BorderThickness = new Thickness(1.6)
+            };
+            _tick = Iconography.Draw("check", 10, 2.2, Brushes.White);
+            Children.Add(_box);
+            Children.Add(_tick);
+            Render();
+            MouseLeftButtonDown += (_, _) => { _isChecked = !_isChecked; Render(); Toggled?.Invoke(_isChecked); };
+        }
+
+        private void Render()
+        {
+            if (_isChecked)
+            {
+                _box.Background = Theme.Accent;
+                _box.BorderBrush = Theme.Accent;
+                _tick.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                _box.Background = Brushes.Transparent;
+                _box.BorderBrush = Theme.Faint;
+                _tick.Visibility = Visibility.Hidden;
+            }
+        }
+    }
+
     /// <summary>Reference-style donut with proportional colored arcs and a center label.</summary>
     internal static FrameworkElement Donut(IReadOnlyList<(double ratio, Brush brush)> segments, double size,
         double thickness, FrameworkElement center)

@@ -3,6 +3,7 @@
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  Title="Aether Island" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize"
  WindowStartupLocation="Manual" ShowInTaskbar="False" Topmost="True"
+ FontFamily="Segoe UI"
  Width="196" Height="46" Background="Transparent">
  <Grid>
   <!-- Collapsed pill -->
@@ -31,7 +32,7 @@
       <Button x:Name="SettingsButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Settings" Click="SettingsClick"/>
      </StackPanel>
     </Grid>
-    <Border Grid.Row="1" Margin="10,0,10,10" Background="#14181E" CornerRadius="12">
+    <Border Grid.Row="1" x:Name="ContentCard" Margin="10,0,10,10" Background="#14181E" CornerRadius="12">
      <ContentControl x:Name="ContentHost"/>
     </Border>
    </Grid>

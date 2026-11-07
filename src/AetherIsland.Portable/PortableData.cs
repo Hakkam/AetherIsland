@@ -21,6 +21,8 @@ public static class PortableData
     public static string InstanceKey { get; } = Convert.ToHexString(SHA256.HashData(
         Encoding.UTF8.GetBytes(Path.GetFullPath(Root).ToUpperInvariant())))[..16];
     public static PortableSettings Settings { get; private set; } = new();
+    /// <summary>Replace the whole settings object (used by Reset settings).</summary>
+    public static void ReplaceSettings(PortableSettings replacement) { Settings = replacement; SaveSettings(); }
     public static DpapiCredentialStore Credentials { get; private set; } = null!;
 
     public static void Initialize()

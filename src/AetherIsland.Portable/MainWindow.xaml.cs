@@ -388,6 +388,8 @@ public partial class MainWindow : Window
         Panel.BorderBrush = Theme.PanelEdge;
         Pill.Background = Theme.Bg;
         Pill.BorderBrush = Theme.PanelEdge;
+        ContentCard.Background = Theme.Card;
+        ContentCard.BorderBrush = Theme.CardEdge;
         PillClock.Foreground = Theme.Text;
         PillStatus.Foreground = Theme.Dim;
         HeaderClock.Foreground = Theme.Text;

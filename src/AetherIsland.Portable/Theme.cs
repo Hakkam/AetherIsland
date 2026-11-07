@@ -38,6 +38,7 @@ internal static class Theme
     public static Brush PanelEdge => Solid(IsDark ? "#262C36" : "#D9DEE7");
     public static Brush Card      => Solid(IsDark ? "#14181E" : "#FFFFFF");
     public static Brush CardEdge  => Solid(IsDark ? "#1F252E" : "#E4E8EF");
+    public static Brush SectionCard => Solid(IsDark ? "#1A202A" : "#F2F5F9");
     public static Brush Chip      => Solid(IsDark ? "#222833" : "#E8ECF2");
     public static Brush ChipOn    => Brushes.White;
     public static Brush Text      => Solid(IsDark ? "#F2F5F9" : "#1A2029");
