@@ -140,29 +140,60 @@ public partial class MainWindow : Window
         }
     }
 
+    private int _navSeq;
+
+    private UIElement BuildModule(string name) => name switch
+    {
+        "home"      => RenderHome(),
+        "dashboard" => RenderDashboard(),
+        "shelf"     => RenderShelf(),
+        "tasks"     => RenderTasks(),
+        "notes"     => RenderNotes(),
+        "focus"     => RenderFocus(),
+        "media"     => RenderMedia(),
+        "wellbeing" => RenderWellbeing(),
+        "screen"    => RenderScreen(),
+        "weather"   => RenderWeather(),
+        "network"   => RenderNetwork(),
+        "ai"        => RenderAi(),
+        "utilities" => RenderUtilities(),
+        "settings"  => RenderSettings(),
+        _ => RenderDashboard()
+    };
+
     private void Navigate(string name)
     {
         _current = name;
         StyleActiveNav();
         // Content is reconstructed lazily; other tabs keep no polling behind them.
-        ContentHost.Content = name switch
+        var content = BuildModule(name);
+        if (PortableData.Settings.ReducedMotion)
         {
-            "home"      => RenderHome(),
-            "dashboard" => RenderDashboard(),
-            "shelf"     => RenderShelf(),
-            "tasks"     => RenderTasks(),
-            "notes"     => RenderNotes(),
-            "focus"     => RenderFocus(),
-            "media"     => RenderMedia(),
-            "wellbeing" => RenderWellbeing(),
-            "screen"    => RenderScreen(),
-            "weather"   => RenderWeather(),
-            "network"   => RenderNetwork(),
-            "ai"        => RenderAi(),
-            "utilities" => RenderUtilities(),
-            "settings"  => RenderSettings(),
-            _ => RenderDashboard()
-        };
+            ContentHost.Content = content;
+            return;
+        }
+        // Crossfade module switches the way the reference video does:
+        // the outgoing view fades quickly, the incoming view eases in.
+        var seq = ++_navSeq;
+        var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150))
+        { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop };
+        if (ContentHost.Content is UIElement && ContentHost.Opacity > 0.95)
+        {
+            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(90))
+            { FillBehavior = FillBehavior.Stop };
+            fadeOut.Completed += (_, _) =>
+            {
+                if (seq != _navSeq) return; // superseded by a faster click
+                ContentHost.Content = content;
+                ContentHost.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+            };
+            ContentHost.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        }
+        else
+        {
+            ContentHost.Content = content;
+            ContentHost.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        }
     }
 
     private void UpdateClock()
@@ -188,16 +219,22 @@ public partial class MainWindow : Window
 
     private void Toggle() { if (_expanded) Collapse(); else Expand(); }
 
+    private static readonly CubicEase MotionEase = new() { EasingMode = EasingMode.EaseOut };
+    private static readonly TimeSpan MotionDuration = TimeSpan.FromMilliseconds(240);
+
     private void Expand()
     {
         if (_expanded) { Activate(); return; }
         _expanded = true;
         var x = Left - (PanelWidth - PillWidth) / 2;
         var y = Top;
-        Panel.Visibility = Visibility.Visible;
         Pill.Visibility = Visibility.Collapsed;
+        Panel.Visibility = Visibility.Visible;
         EnsureMediaStarted();
         AnimateWindow(PanelWidth, PanelHeight, x, y);
+        if (!PortableData.Settings.ReducedMotion)
+            Panel.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
         Activate();
         InstallOutsideClickHook();
     }
@@ -209,9 +246,32 @@ public partial class MainWindow : Window
         RemoveOutsideClickHook();
         var x = Left + (Width - PillWidth) / 2;
         var y = Top;
-        Panel.Visibility = Visibility.Collapsed;
-        Pill.Visibility = Visibility.Visible;
-        AnimateWindow(PillWidth, PillHeight, x, y);
+        if (PortableData.Settings.ReducedMotion)
+        {
+            Panel.Visibility = Visibility.Collapsed;
+            Pill.Visibility = Visibility.Visible;
+            AnimateWindow(PillWidth, PillHeight, x, y);
+        }
+        else
+        {
+            // Shrink into the pill while the panel fades out of it — the
+            // reference video's eased transition, in reverse.
+            Pill.Visibility = Visibility.Visible;
+            Pill.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(0, 1, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
+            Panel.BeginAnimation(UIElement.OpacityProperty,
+                new DoubleAnimation(1, 0, MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop });
+            var shrink = new DoubleAnimation(Width, PillWidth, MotionDuration)
+            { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop };
+            shrink.Completed += (_, _) =>
+            {
+                if (_expanded) return; // a rapid re-expand took over
+                Panel.Visibility = Visibility.Collapsed;
+                Panel.Opacity = 1;
+                Pill.Opacity = 1;
+            };
+            AnimateWindow(PillWidth, PillHeight, x, y, shrink);
+        }
         UpdatePillStatus();
     }
 
@@ -283,11 +343,8 @@ public partial class MainWindow : Window
         return Native.CallNextHookEx(_outsideHook, code, wParam, lParam);
     }
 
-    private void AnimateWindow(double width, double height, double x, double y)
+    private void AnimateWindow(double width, double height, double x, double y, DoubleAnimation? widthOverride = null)
     {
-        // Layered WPF windows can report stale hit-test geometry during
-        // Width/Height animations. Snap the HWND to final bounds first; only
-        // fade content opacity afterwards.
         BeginAnimation(WidthProperty, null);
         BeginAnimation(HeightProperty, null);
         BeginAnimation(LeftProperty, null);
@@ -295,13 +352,30 @@ public partial class MainWindow : Window
         var area = SystemParameters.WorkArea;
         x = Math.Clamp(x, area.Left, Math.Max(area.Left, area.Right - width));
         y = Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - height));
-        Width = width; Height = height; Left = x; Top = y;
+        var oldWidth = Width; var oldHeight = Height;
+        var oldLeft = Left; var oldTop = Top;
+        Width = width; Height = height; Left = x; Top = y;   // base = final state
         UpdateLayout();
-        if (!PortableData.Settings.ReducedMotion)
+        if (PortableData.Settings.ReducedMotion) return;
+
+        // Ease the real window bounds from the previous rect to the new one;
+        // animated values override the (final) base while in flight.
+        void Animate(DependencyProperty dp, double from, DoubleAnimation? custom = null)
         {
-            var content = _expanded ? (UIElement)Panel : Pill;
-            content.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0.4, 1.0,
-                TimeSpan.FromMilliseconds(150)) { FillBehavior = FillBehavior.Stop });
+            var anim = custom ?? new DoubleAnimation(from, (double)GetValue(dp),
+                MotionDuration) { EasingFunction = MotionEase, FillBehavior = FillBehavior.Stop };
+            BeginAnimation(dp, anim);
+        }
+        var animateBounds = Math.Abs(oldWidth - width) > 0.5 || Math.Abs(oldHeight - height) > 0.5;
+        if (animateBounds)
+        {
+            Animate(WidthProperty, oldWidth, widthOverride);
+            Animate(HeightProperty, oldHeight);
+        }
+        if (Math.Abs(oldLeft - x) > 0.5 || Math.Abs(oldTop - y) > 0.5)
+        {
+            Animate(LeftProperty, oldLeft);
+            Animate(TopProperty, oldTop);
         }
     }
 
@@ -626,6 +700,10 @@ public partial class MainWindow : Window
     /// <summary>Verifies real WPF layout and routed tab actions on demand.</summary>
     public void VerifyShellInteractions()
     {
+        var motionWasReduced = PortableData.Settings.ReducedMotion;
+        PortableData.Settings.ReducedMotion = true; // geometry checks need final bounds
+        try
+        {
         Expand();
         UpdateLayout();
         if (!_expanded || Panel.Visibility != Visibility.Visible || Pill.Visibility != Visibility.Collapsed)
@@ -648,6 +726,8 @@ public partial class MainWindow : Window
         UpdateLayout();
         if (_expanded || Pill.Visibility != Visibility.Visible || Panel.Visibility != Visibility.Collapsed || Width > 220)
             throw new InvalidOperationException("Collapse did not restore the compact pill.");
+        }
+        finally { PortableData.Settings.ReducedMotion = motionWasReduced; }
     }
 }
 
