@@ -10,6 +10,7 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
         PortableData.Initialize();
         _mutex = new Mutex(true, "AetherIsland.Portable." + PortableData.InstanceKey, out var created);
         if (!created) { Shutdown(); return; }

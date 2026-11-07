@@ -97,6 +97,7 @@ public partial class MainWindow : Window
         Closed += (_, _) =>
         {
             RemoveOutsideClickHook();
+            KeyboardBlocker.Set(false); // fail-safe: typing returns when the island exits
             _clock.Stop();
             _activity.Dispose();
             _media.Dispose();
@@ -510,6 +511,7 @@ public partial class MainWindow : Window
             status = session.Title;
         }
         else if (Toggles.KeepAwakeOn) { status = "Keeping awake"; dot = Theme.Orange; }
+        else if (KeyboardBlocker.IsOn) { status = "Laptop keyboard off"; dot = Theme.Orange; }
         else status = "Aether Island";
         PillStatus.Text = status;
         PillDot.Fill = dot;

@@ -330,9 +330,21 @@ internal static class Ui
             MouseLeftButtonDown += (_, _) => { _on = !_on; Render(); Toggled?.Invoke(_on); };
         }
 
+        private bool _unavailable;
+
+        public void SetUnavailable(string reason)
+        {
+            _unavailable = true;
+            Opacity = 0.45;
+            IsHitTestVisible = false;
+            ToolTip = reason;
+            Render();
+        }
+
         private void Render()
         {
-            _track.Background = _on ? Theme.Accent : Theme.Track;
+            if (_unavailable) _track.Background = Theme.Track;
+            else _track.Background = _on ? Theme.Accent : Theme.Track;
             SetLeft(_thumb, _on ? _w - _h + 2 : 2);
             SetTop(_thumb, 2);
             _thumb.Background = Brushes.White;
