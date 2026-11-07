@@ -27,9 +27,9 @@
      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0" Background="Transparent">
       <TextBlock x:Name="HeaderClock" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,9,0" Background="Transparent"/>
       <TextBlock x:Name="HeaderDate" VerticalAlignment="Center" FontSize="9.5" Margin="0,0,12,0" Background="Transparent"/>
-      <Button x:Name="RefreshButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Refresh" Click="RefreshClick"/>
-      <Button x:Name="AwakeButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Keep awake" Click="AwakeClick"/>
-      <Button x:Name="SettingsButton" Width="27" Height="27" Margin="1" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Settings" Click="SettingsClick"/>
+      <Button x:Name="RefreshButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Refresh" Click="RefreshClick"/>
+      <Button x:Name="AwakeButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Keep awake" Click="AwakeClick"/>
+      <Button x:Name="SettingsButton" Width="29" Height="28" Margin="1" Background="Transparent" BorderThickness="0" FocusVisualStyle="{x:Null}" ToolTip="Settings" Click="SettingsClick"/>
      </StackPanel>
     </Grid>
     <Border Grid.Row="1" x:Name="ContentCard" Margin="10,0,10,10" Background="#14181E" CornerRadius="12">

@@ -123,9 +123,16 @@ public partial class MainWindow : Window
 
     private void BuildHeaderButtons()
     {
-        Iconography.SetIcon(RefreshButton, "refresh", 13.5, Theme.Dim);
-        Iconography.SetIcon(AwakeButton, "coffee", 14, Theme.Dim);
-        Iconography.SetIcon(SettingsButton, "settings", 14, Theme.Dim);
+        // Same geometry as the nav rail: transparent, radius 9, hover overlay.
+        Ui.SetCorner(RefreshButton, 9);
+        Ui.SetCorner(AwakeButton, 9);
+        Ui.SetCorner(SettingsButton, 9);
+        RefreshButton.Background = Brushes.Transparent;
+        AwakeButton.Background = Brushes.Transparent;
+        SettingsButton.Background = Brushes.Transparent;
+        Iconography.SetIcon(RefreshButton, "refresh", 16, Theme.Dim);
+        Iconography.SetIcon(AwakeButton, "coffee", 16, Theme.Dim);
+        Iconography.SetIcon(SettingsButton, "settings", 16, Theme.Dim);
         RefreshAwakeButton();
     }
 
@@ -559,7 +566,7 @@ public partial class MainWindow : Window
     }
 
     internal void RefreshAwakeButton()
-        => Iconography.SetIcon(AwakeButton, "coffee", 14, Toggles.KeepAwakeOn ? Theme.Orange : Theme.Dim);
+        => Iconography.SetIcon(AwakeButton, "coffee", 16, Toggles.KeepAwakeOn ? Theme.Orange : Theme.Dim);
 
     private void SettingsClick(object sender, RoutedEventArgs e) => Navigate("settings");
 
