@@ -103,7 +103,7 @@ public partial class MainWindow : Window
         foreach (var section in Sections)
         {
             var id = section.Id;
-            var button = Iconography.IconButton(section.Icon, section.Tooltip, 29, () => Navigate(id), iconSize: 15.5, corner: 9);
+            var button = Iconography.IconButton(section.Icon, section.Tooltip, 29, () => Navigate(id), iconSize: 16, corner: 9);
             button.Tag = id;
             Navigation.Children.Add(button);
             _buttons[id] = button;

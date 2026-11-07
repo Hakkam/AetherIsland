@@ -99,19 +99,29 @@ internal static class Ui
     internal static ControlTemplate ButtonTemplate(double radius)
     {
         var template = new ControlTemplate(typeof(Button));
+        var grid = new FrameworkElementFactory(typeof(Grid));
         var factory = new FrameworkElementFactory(typeof(Border));
         factory.Name = "bd";
         factory.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius));
         factory.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Button.BackgroundProperty));
         factory.SetValue(Border.BorderBrushProperty, new TemplateBindingExtension(Button.BorderBrushProperty));
         factory.SetValue(Border.BorderThicknessProperty, new TemplateBindingExtension(Button.BorderThicknessProperty));
+        var hoverLayer = new FrameworkElementFactory(typeof(Border));
+        hoverLayer.Name = "hoverBg";
+        hoverLayer.SetValue(Border.CornerRadiusProperty, new CornerRadius(radius));
+        hoverLayer.SetValue(Border.BackgroundProperty, Ui.Solid("#1F8B93A6"));
+        hoverLayer.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        hoverLayer.SetValue(UIElement.VisibilityProperty, Visibility.Hidden);
         var content = new FrameworkElementFactory(typeof(ContentPresenter));
         content.SetValue(ContentPresenter.MarginProperty, new TemplateBindingExtension(Button.PaddingProperty));
         content.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         content.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
-        factory.AppendChild(content);
-        template.VisualTree = factory;
+        grid.AppendChild(factory);
+        grid.AppendChild(hoverLayer);
+        grid.AppendChild(content);
+        template.VisualTree = grid;
         var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter { Property = UIElement.VisibilityProperty, Value = Visibility.Visible, TargetName = "hoverBg" });
         template.Triggers.Add(hover);
         return template;
     }

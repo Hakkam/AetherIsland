@@ -104,7 +104,7 @@ public partial class MainWindow
         head.Cursor = System.Windows.Input.Cursors.Hand;
         head.MouseLeftButtonDown += (_, _) => Win.Navigate("weather");
 
-        var glyph = new ContentControl { Content = Iconography.Draw("weather", 38, 2.1, Theme.Text), VerticalAlignment = VerticalAlignment.Center };
+        var glyph = new ContentControl { Content = Iconography.DrawFilled("weatherfill", 40, Theme.Text), VerticalAlignment = VerticalAlignment.Center };
         var temp = Ui.Text("—", 27, true);
         var condition = Ui.Text(PortableData.Settings.WeatherLatitude is null
             ? "Choose a location for live weather" : "Loading forecast…", 11, true);
@@ -128,6 +128,7 @@ public partial class MainWindow
         open.Cursor = System.Windows.Input.Cursors.Hand;
         open.MouseLeftButtonDown += (_, _) => Win.Navigate("weather");
         stack.Children.Add(open);
+        stack.ToolTip = "Weather — click any part for the full forecast";
         return stack;
     }
 
@@ -222,14 +223,14 @@ public partial class MainWindow
     {
         var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         var wrap = new WrapPanel { ItemWidth = 78, ItemHeight = 57, Margin = new Thickness(2, 8, 0, 0) };
-        foreach (var (label, iconKey, target, iconPath, tint) in new[]
+        foreach (var (label, fullName, iconKey, target, iconPath, tint) in new[]
         {
-            ("File Explr…", "folder",  "shell:Downloads", (string?)Path.Combine(windir, "explorer.exe"), "#F6C453"),
-            ("Downloa…",   "download","shell:Downloads", (string?)null,                                   "#3F76C9"),
-            ("Calculator", "calculator","calc.exe",      (string?)Path.Combine(windir, "System32", "calc.exe"), "#8A94A6"),
-            ("Notepad",    "notes",   "notepad.exe",     (string?)Path.Combine(windir, "System32", "notepad.exe"), "#7BD3F7"),
-            ("Task Mgr",   "activity","taskmgr.exe",    (string?)Path.Combine(windir, "System32", "taskmgr.exe"), "#5B8DEF"),
-            ("Settings",   "settings","ms-settings:",   (string?)null,                                   "#98A1B0"),
+            ("File Explr…", "File Explorer", "folder",  "shell:Downloads", (string?)Path.Combine(windir, "explorer.exe"), "#F6C453"),
+            ("Downloa…",   "Downloads",     "download","shell:Downloads", (string?)null,                                   "#3F76C9"),
+            ("Calculator", "Calculator",    "calculator","calc.exe",      (string?)Path.Combine(windir, "System32", "calc.exe"), "#8A94A6"),
+            ("Notepad",    "Notepad",       "notes",   "notepad.exe",     (string?)Path.Combine(windir, "System32", "notepad.exe"), "#7BD3F7"),
+            ("Task Mgr",   "Task Manager",  "activity","taskmgr.exe",     (string?)Path.Combine(windir, "System32", "taskmgr.exe"), "#5B8DEF"),
+            ("Settings",   "Windows Settings","settings","ms-settings:",  (string?)null,                                   "#98A1B0"),
         })
         {
             var tile = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(2) };
@@ -249,6 +250,7 @@ public partial class MainWindow
             caption.Margin = new Thickness(0, 3, 0, 0);
             tile.Children.Add(caption);
             tile.Cursor = System.Windows.Input.Cursors.Hand;
+            tile.ToolTip = fullName + " — click to open";
             var launch = target;
             tile.MouseLeftButtonDown += (_, _) => External.Open(launch);
             wrap.Children.Add(tile);
@@ -281,6 +283,7 @@ public partial class MainWindow
         stack.Children.Add(Ui.Text(
             $"Wake {PortableData.Settings.WakeHour:00}:00 · Bed {PortableData.Settings.BedHour:00}:00", 9, false, Theme.Faint));
         stack.Cursor = System.Windows.Input.Cursors.Hand;
+        stack.ToolTip = "Day progress — click to edit wake/bed hours";
         stack.MouseLeftButtonDown += (_, _) => Win.Navigate("settings");
         return stack;
     }

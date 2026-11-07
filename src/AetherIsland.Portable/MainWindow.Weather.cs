@@ -23,6 +23,8 @@ internal static class WeatherModule
     private static Task<WeatherData?>? _task;
     private static string _key = "";
     private static DateTime _lastRequest = DateTime.MinValue;
+    private static Task<WeatherData?>? _failedTask;
+    private static DateTime _failedAt = DateTime.MinValue;
 
     private static bool IsFahrenheit => PortableData.Settings.WeatherUnit == "f";
 
@@ -35,10 +37,23 @@ internal static class WeatherModule
         var key = lat + "_" + lon;
         if (!force && key == _key && _task != null && DateTime.UtcNow - _lastRequest < TimeSpan.FromMinutes(30))
             return _task;
+        // A failed fetch must not be sticky: retry on the next render after a
+        // short back-off so boot-time network drops recover automatically.
+        if (!force && _failedTask != null && DateTime.UtcNow - _failedAt < TimeSpan.FromMinutes(2))
+            return _failedTask;
         _key = key;
         _lastRequest = DateTime.UtcNow;
         var service = new OpenMeteoService(cacheDir: Path.Combine(PortableData.Root, "cache", key), imperial: IsFahrenheit);
-        return _task = service.GetAsync(s.WeatherLatitude.Value, s.WeatherLongitude.Value, s.WeatherLocation);
+        var task = _task = service.GetAsync(s.WeatherLatitude.Value, s.WeatherLongitude.Value, s.WeatherLocation);
+        _ = task.ContinueWith(t =>
+        {
+            var failed = t.IsFaulted || t.Result is null;
+            if (!failed) { _failedTask = null; return; }
+            _failedTask = t.IsFaulted ? Task.FromResult<WeatherData?>(null) : t;
+            _failedAt = DateTime.UtcNow;
+            if (ReferenceEquals(_task, task)) { _task = null; _key = ""; _lastRequest = DateTime.MinValue; }
+        });
+        return task;
     }
 
     public static double ConvertTemp(double? celsius)
@@ -65,7 +80,7 @@ internal static class WeatherModule
         try
         {
             var data = await FetchAsync();
-            if (data is null) { temp.Text = "—"; condition.Text = "Weather unavailable"; return; }
+            if (data is null) { temp.Text = "—"; condition.Text = "Offline — will retry automatically"; return; }
             temp.Text = $"{ConvertTemp(data.TempC)}°";
             var described = WeatherCodes.Describe(data.Code, data.IsDay);
             condition.Text = described.Desc + (data.FromCache ? " · cached/offline" : "");
@@ -95,7 +110,7 @@ internal static class WeatherModule
         current.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         current.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        var glyph = new ContentControl { Content = Iconography.Draw("weather", 44, 2.2, Theme.Text), VerticalAlignment = VerticalAlignment.Center };
+        var glyph = new ContentControl { Content = Iconography.DrawFilled("weatherfill", 46, Theme.Text), VerticalAlignment = VerticalAlignment.Center };
         current.Children.Add(glyph);
         var headCol = new StackPanel { Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         var tempRow = Ui.H(Ui.Text("—", 29, true));
@@ -251,7 +266,7 @@ internal static class WeatherModule
             {
                 PortableData.Log("WEATHER", ex.Message);
                 _ = System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
-                    condition.Text = "Forecast unavailable — offline or service error");
+                    condition.Text = "Forecast unavailable — will retry automatically");
             }
         });
 

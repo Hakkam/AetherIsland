@@ -5,7 +5,7 @@
 # Requires: .NET 10 SDK on Windows. Produces an unsigned setup exe.
 
 $ErrorActionPreference = "Stop"
-$repo = Split-Path -Parent $PSScriptRoot
+$repo = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 & "$repo\tools\publish-portable-v2.ps1" @args
 if ($LASTEXITCODE -ne 0) { throw "publish failed" }
@@ -19,11 +19,15 @@ if (-not $iscc) {
     throw "Inno Setup 6 not found. Install with: winget install --id JRSoftware.InnoSetup -e"
 }
 
-$version = (Select-Xml -Path "$repo\src\AetherIsland.Portable\AetherIsland.Portable.csproj" -XPath "/*/*[local-name()='Version']").Node.InnerText
+$csproj = Get-Content "$repo\src\AetherIsland.Portable\AetherIsland.Portable.csproj" -Raw
+if ($csproj -notmatch '<Version>([0-9.]+)</Version>') { throw "Version not found in csproj" }
+$version = $Matches[1]
 $env:AETHER_VERSION = $version
 
-& $iscc /Q "$repo\installer\AetherIsland.iss"
-if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
+Write-Host "Compiling with $iscc for version $version"
+& $iscc "$repo\installer\AetherIsland.iss"
+Write-Host "ISCC exit code: $LASTEXITCODE"
+if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit $LASTEXITCODE" }
 
 $setup = "$repo\release\AetherIsland-Setup-win-x64.exe"
 $hash = (Get-FileHash $setup -Algorithm SHA256).Hash

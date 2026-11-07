@@ -92,6 +92,7 @@ public partial class MainWindow
             var time = Ui.Text(FormatSeconds(seconds), 9.5, false, Theme.Dim, TextAlignment.Right);
             Grid.SetColumn(time, 3);
             row.Children.Add(time);
+            row.ToolTip = $"{Friendly(exe)} — {FormatSeconds(seconds)}";
             right.Children.Add(row);
         }
         Grid.SetColumn(right, 1);

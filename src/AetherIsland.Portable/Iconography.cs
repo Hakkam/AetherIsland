@@ -23,6 +23,7 @@ internal static class Iconography
         ["wellbeing"] = "M12,20 C7.2,15.7 3.5,12.6 3.5,8.9 A4.4,4.4 0 0 1 12,6.2 A4.4,4.4 0 0 1 20.5,8.9 C20.5,12.6 16.8,15.7 12,20 Z",
         ["screen"]    = "M12,12 L12,3 A9,9 0 1 1 3.4,15.2 Z",
         ["weather"]   = "M6.5,17.5 A4,4 0 0 1 8,9.8 A6,6 0 0 1 19.4,12 A3.6,3.6 0 0 1 18.5,19 L7,19 Z",
+        ["weatherfill"]= "M6.5,17.5 A4,4 0 0 1 8,9.8 A6,6 0 0 1 19.4,12 A3.6,3.6 0 0 1 18.5,19 L7,19 Z",
         ["network"]   = "M3,9.5 A13.5,13.5 0 0 1 21,9.5 M6,13.5 A9,9 0 0 1 18,13.5 M9.2,17 A4.5,4.5 0 0 1 14.8,17 M12,20.5 L12,20.6",
         ["ai"]        = "M11,4 L12.7,9.3 18,11 12.7,12.7 11,18 9.3,12.7 4,11 9.3,9.3 Z M18.5,14 L19.3,16.2 21.5,17 19.3,17.8 18.5,20 17.7,17.8 15.5,17 17.7,16.2 Z",
         ["utilities"] = "M19.8,6.3 A5.2,5.2 0 0 1 12.6,11.5 L5.6,18.5 A1.9,1.9 0 0 1 2.9,15.8 L9.9,8.8 A5.2,5.2 0 0 1 15.1,1.6 L11.9,4.8 14.6,7.5 17.7,4.4 Z",
@@ -65,6 +66,22 @@ internal static class Iconography
         ["activity"]  = "M3.5,12 L7.5,12 10,6 13.5,18 16,12 20.5,12",
         ["calculator"]= "M6,3 L18,3 18,21 6,21 Z M8.5,6.5 L15.5,6.5 M8.5,11 L10,11 M12.5,11 L14,11 M8.5,14.5 L10,14.5 M12.5,14.5 L14,14.5 M8.5,18 L10,18 M12.5,18 L14,18 M14.5,14.5 L16,14.5 M14.5,11 L16,11"
     };
+
+    public static UIElement DrawFilled(string name, double size, Brush brush)
+    {
+        var key = Paths.ContainsKey(name) ? name : "dashboard";
+        var path = new Path
+        {
+            Data = Geometry.Parse(Paths[key]),
+            Fill = brush,
+            Stroke = null,
+            Stretch = Stretch.Uniform,
+            Width = 24,
+            Height = 24,
+            IsHitTestVisible = false
+        };
+        return new Viewbox { Width = size, Height = size, Child = path, IsHitTestVisible = false };
+    }
 
     public static UIElement Draw(string name, double size = 16, double thickness = 1.7, Brush? brush = null)
     {
