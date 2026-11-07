@@ -100,6 +100,7 @@ public sealed class PortableSettings
     // System integration
     public bool LaunchAtStartup { get; set; } = true;
     public bool HotkeyEnabled { get; set; } = true;      // Ctrl+Alt+Space toggles the island
+    public bool CollapseOnOutsideClick { get; set; } = true; // any click outside collapses to the pill
 
     // Screen time
     public bool ScreenTimeConsent { get; set; }

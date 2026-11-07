@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -70,6 +71,14 @@ public partial class MainWindow : Window
         BuildHeaderButtons();
         ApplyThemeChrome();
         KeyDown += WindowKeyDown;
+        Deactivated += (_, _) =>
+        {
+            // Click outside (or focus moved elsewhere) while expanded →
+            // minimize to the pill. Collapse only swaps internal visuals and
+            // resizes, so this cannot make the app disappear. Pin overrides.
+            if (_expanded && !_pinned && PortableData.Settings.CollapseOnOutsideClick)
+                Collapse();
+        };
         _tray = BuildTray();
         _clock.Tick += (_, _) => UpdateClock();
         _clock.Start();
@@ -87,6 +96,7 @@ public partial class MainWindow : Window
 
         Closed += (_, _) =>
         {
+            RemoveOutsideClickHook();
             _clock.Stop();
             _activity.Dispose();
             _media.Dispose();
@@ -189,18 +199,88 @@ public partial class MainWindow : Window
         EnsureMediaStarted();
         AnimateWindow(PanelWidth, PanelHeight, x, y);
         Activate();
+        InstallOutsideClickHook();
     }
 
     private void Collapse()
     {
         if (!_expanded) return;
         _expanded = false;
+        RemoveOutsideClickHook();
         var x = Left + (Width - PillWidth) / 2;
         var y = Top;
         Panel.Visibility = Visibility.Collapsed;
         Pill.Visibility = Visibility.Visible;
         AnimateWindow(PillWidth, PillHeight, x, y);
         UpdatePillStatus();
+    }
+
+    // ---------------- click outside collapses (popup behavior) ----------------
+
+    private IntPtr _outsideHook;
+    private Native.HookProc? _outsideHookProc;
+    private bool _outsideLoggedClick;
+
+    private static readonly HashSet<string> ShellTrayClasses = new(StringComparer.Ordinal)
+    {
+        "Shell_TrayWnd", "NotifyIconOverflowWindow", "TopLevelWindowForOverflowXamlIsland", "#32768"
+    };
+
+    private void InstallOutsideClickHook()
+    {
+        if (!PortableData.Settings.CollapseOnOutsideClick || _outsideHook != IntPtr.Zero) return;
+        _outsideHookProc = OutsideClickHook;
+        _outsideLoggedClick = false;
+        _outsideHook = Native.SetWindowsHookEx(Native.WH_MOUSE_LL, _outsideHookProc,
+            Native.GetModuleHandle(null), 0);
+        PortableData.Log("HOOK", _outsideHook == IntPtr.Zero ? "install failed" : "armed");
+    }
+
+    private void RemoveOutsideClickHook()
+    {
+        if (_outsideHook == IntPtr.Zero) return;
+        Native.UnhookWindowsHookEx(_outsideHook);
+        _outsideHook = IntPtr.Zero;
+        _outsideHookProc = null;
+    }
+
+    private IntPtr OutsideClickHook(int code, IntPtr wParam, IntPtr lParam)
+    {
+        try
+        {
+            if (code >= 0 && _expanded && !_pinned
+                && PortableData.Settings.CollapseOnOutsideClick
+                && (wParam.ToInt64() is Native.WM_LBUTTONDOWN_LL or Native.WM_RBUTTONDOWN_LL))
+            {
+                var info = Marshal.PtrToStructure<Native.MSLLHOOKSTRUCT>(lParam);
+                var at = new Native.POINTI { X = info.pt.X, Y = info.pt.Y };
+                var hitWindow = Native.WindowFromPoint(at);
+                var cls = new System.Text.StringBuilder(64);
+                Native.GetClassName(hitWindow, cls, 64);
+                if (!_outsideLoggedClick)
+                {
+                    _outsideLoggedClick = true;
+                    PortableData.Log("HOOK", $"click at {at.X},{at.Y} cls={cls} expanded={_expanded}");
+                }
+                if (!ShellTrayClasses.Contains(cls.ToString()))
+                {
+                    var self = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+                    var rect = new Native.RECTL();
+                    if (self != IntPtr.Zero && Native.GetWindowRectIntPtr(self, out rect)
+                        && (at.X < rect.L || at.X > rect.R || at.Y < rect.T || at.Y > rect.B))
+                    {
+                        // Non-eating: the click continues to the app below.
+                        Dispatcher.BeginInvoke((Action)(() =>
+                        {
+                            if (_expanded && !_pinned && PortableData.Settings.CollapseOnOutsideClick)
+                                Collapse();
+                        }));
+                    }
+                }
+            }
+        }
+        catch { /* the hook must never break mouse input */ }
+        return Native.CallNextHookEx(_outsideHook, code, wParam, lParam);
     }
 
     private void AnimateWindow(double width, double height, double x, double y)

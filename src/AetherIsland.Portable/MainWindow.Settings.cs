@@ -160,6 +160,14 @@ public partial class MainWindow
                     ? "Ctrl+Alt+Space enabled — takes effect on next launch."
                     : "Ctrl+Alt+Space disabled — takes effect on next launch.");
             }));
+        behavior.Body.Children.Add(Ui.Spacer(0, 6));
+        behavior.Body.Children.Add(BuildSwitchRow("Collapse when clicking outside",
+            "Any click away from the island minimizes it to the pill",
+            s.CollapseOnOutsideClick, on =>
+            {
+                s.CollapseOnOutsideClick = on;
+                PortableData.SaveSettings();
+            }));
         behavior.Body.Children.Add(Ui.Spacer(0, 8));
         behavior.Body.Children.Add(Ui.H(
             Ui.TextButton("Pin panel", () => { s.Pinned = true; PortableData.SaveSettings(); Win.PinStateChanged(); },

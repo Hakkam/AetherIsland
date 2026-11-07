@@ -19,6 +19,33 @@ internal static class Native
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, UIntPtr wParam, IntPtr lParam,
         uint fuFlags, uint uTimeout, out UIntPtr result);
+
+    // Low-level mouse hook for "click outside collapses" (popup-style behavior).
+    internal delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern IntPtr SetWindowsHookEx(int idHook, HookProc proc, IntPtr module, int threadId);
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern bool UnhookWindowsHookEx(IntPtr hook);
+    [DllImport("user32.dll")]
+    internal static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    internal static extern IntPtr GetModuleHandle(string? name);
+    [DllImport("user32.dll")]
+    internal static extern IntPtr WindowFromPoint(POINTI point);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder name, int max);
+    [DllImport("user32.dll")]
+    internal static extern bool GetWindowRectIntPtr(IntPtr hWnd, out RECTL rect);
+
+    internal struct POINTI { public int X; public int Y; }
+    internal struct RECTL { public int L; public int T; public int R; public int B; }
+#pragma warning disable CS0649 // populated via Marshal.PtrToStructure
+    internal struct MSLLHOOKSTRUCT { public POINTI pt; public uint mouseData; public uint flags; public uint time; public IntPtr extraInfo; }
+#pragma warning restore CS0649
+
+    internal const int WH_MOUSE_LL = 14;
+    internal const int WM_LBUTTONDOWN_LL = 0x0201;
+    internal const int WM_RBUTTONDOWN_LL = 0x0204;
 }
 
 /// <summary>

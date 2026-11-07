@@ -386,6 +386,8 @@ internal sealed class MirrorWindow : System.Windows.Window
                 StreamingCaptureMode = StreamingCaptureMode.Video,
                 MediaCategory = MediaCategory.Media
             });
+            try { await _capture.StartPreviewAsync(); }
+            catch (Exception startEx) { PortableData.Log("MIRROR", "preview: " + startEx.Message); }
             _status.Text = "";
             _cts = new CancellationTokenSource();
             _ = PreviewLoop(_cts.Token);
