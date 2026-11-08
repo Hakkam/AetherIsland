@@ -57,14 +57,15 @@ public partial class MainWindow
         stack.Children.Add(Ui.Spacer(0, 8));
         stack.Children.Add(Ui.Text($"{focus.CompletedPomodoros} pomodoro(s) completed today", 9.5, false, Theme.Dim, TextAlignment.Center));
 
-        // Keep the clock live while visible; the timer stops itself when not running.
+        // Keep the clock live while visible; stops itself when the tab closes.
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         timer.Tick += (_, _) =>
         {
             clock.Text = focus.Clock;
-            if (!IsModuleVisible("focus") || (!focus.Running && !FocusAlive))
+            if (!IsModuleVisible("focus"))
             {
                 timer.Stop();
+                _liveFocusTimers.Remove(timer);
             }
         };
         timer.Start();

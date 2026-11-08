@@ -82,12 +82,25 @@ internal static class Iconography
         ["sun"]       = "M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z M12 2v2 M12 20v2 M4.93 4.93l1.41 1.41 M17.66 17.66l1.41 1.41 M2 12h2 M20 12h2 M6.34 17.66l-1.41 1.41 M19.07 4.93l-1.41 1.41",
     };
 
+    private static readonly Dictionary<string, Geometry> GeometryCache = new();
+
+    private static Geometry GeometryFor(string key)
+    {
+        if (!GeometryCache.TryGetValue(key, out var geometry))
+        {
+            geometry = Geometry.Parse(Paths[key]);
+            if (geometry.CanFreeze) geometry.Freeze(); // immutable + shareable across all Paths
+            GeometryCache[key] = geometry;
+        }
+        return geometry;
+    }
+
     public static UIElement Draw(string name, double size = 16, double thickness = 1.7, Brush? brush = null)
     {
         var key = Paths.ContainsKey(name) ? name : "dashboard";
         var path = new Path
         {
-            Data = Geometry.Parse(Paths[key]),
+            Data = GeometryFor(key),
             Stroke = brush ?? new SolidColorBrush(Color.FromRgb(219, 226, 237)),
             StrokeThickness = thickness,
             StrokeLineJoin = PenLineJoin.Round,
@@ -108,7 +121,7 @@ internal static class Iconography
         var key = Paths.ContainsKey(name) ? name : "dashboard";
         var path = new Path
         {
-            Data = Geometry.Parse(Paths[key]),
+            Data = GeometryFor(key),
             Fill = brush,
             Stroke = null,
             Stretch = Stretch.Uniform,

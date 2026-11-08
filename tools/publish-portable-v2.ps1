@@ -6,7 +6,7 @@ $release = Join-Path $root 'release/portable-v2'
 $output = Join-Path $release 'win-x64'
 if (Test-Path -LiteralPath $release) { Remove-Item -LiteralPath $release -Force -Recurse }
 New-Item -ItemType Directory -Path $output -Force | Out-Null
-dotnet publish $project -c $Configuration -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -p:PublishReadyToRun=false -o $output
+dotnet publish $project -c $Configuration -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishTrimmed=false -p:PublishReadyToRun=true -o $output
 if ($LASTEXITCODE -ne 0) { throw 'Portable V2 publish failed' }
 $exe = Join-Path $output 'AetherIsland.exe'
 if (!(Test-Path -LiteralPath $exe)) { throw 'Portable executable was not created' }

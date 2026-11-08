@@ -73,10 +73,18 @@ internal static class Ui
         return b;
     }
 
+    private static readonly Dictionary<double, ControlTemplate> CornerTemplateCache = new();
+
     internal static void SetCorner(Button b, double radius)
     {
-        // WPF Button template: round via template-less approach using a border-less custom template.
-        b.Template = ButtonTemplate(radius);
+        // Templates are cached per radius — building one per button wasted
+        // allocations at every module render.
+        if (!CornerTemplateCache.TryGetValue(radius, out var template))
+        {
+            template = ButtonTemplate(radius);
+            CornerTemplateCache[radius] = template;
+        }
+        b.Template = template;
     }
 
     internal static ControlTemplate TextBoxTemplate()

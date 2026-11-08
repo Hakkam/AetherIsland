@@ -30,6 +30,9 @@ public partial class App : System.Windows.Application
         var window = new MainWindow();
         MainWindow = window;
         window.Show();
+        PerfTuning.ApplyIdleFriendlyPolicy();
+        _ = System.Threading.Tasks.Task.Delay(30_000).ContinueWith(_ =>
+            Dispatcher.BeginInvoke(() => { if (MainWindow is not MainWindow w || !w.IsExpandedPublic) PerfTuning.TrimWorkingSet(); }));
 
         var captureArg = e.Args.FirstOrDefault(a => a.StartsWith("--capture-views", StringComparison.OrdinalIgnoreCase));
         var selfcheck = e.Args.Any(a => string.Equals(a, "--ui-selfcheck", StringComparison.OrdinalIgnoreCase));
