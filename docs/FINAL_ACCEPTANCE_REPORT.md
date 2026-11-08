@@ -47,10 +47,9 @@ self-contained portable ZIP and a verified per-user Inno Setup installer.
 
 ## AI integrity
 
-Only the OpenAI organization API monthly hard-limit provider ships
-(AI_PROVIDER_CAPABILITIES.md). Without a key the module shows an explicit
-"add key" state; without a verified enforcing limit it refuses to invent
-numbers. Keys are DPAPI-encrypted, never logged.
+The AI quota module was **removed entirely at the user's request**
+(2026-11-08, v2.2.1): no AI UI, no provider adapters, no credential storage.
+History preserved in Git; see docs/FEATURE_COVERAGE.md.
 
 ## Performance (measured)
 

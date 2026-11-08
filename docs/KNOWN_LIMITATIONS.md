@@ -21,14 +21,10 @@
    is on and the session is not idle (≥5 min). Elevated processes report no
    icon. No titles/URLs/keystrokes are ever read.
 
-## Scope decisions (per the AI-integrity rule)
+## Scope decisions
 
-6. **AI quota supports only the OpenAI organization API monthly hard spend
-   limit** — the one case with an official, documented endpoint that yields a
-   real enforcing limit plus real usage. ChatGPT Plus/Pro, Claude, Codex,
-   Z.ai and OpenCode expose no documented third-party quota API, so they are
-   never displayed. A configured key without an enforcing limit shows an
-   honest "no verified quota" state.
+6. **AI quota module removed** (2026-11-08, user request). No AI provider
+   cards, no API-key storage, no AI endpoints — the surface is simply gone.
 7. **Calendar OAuth (Google/Microsoft) is not implemented.** Public ICS URLs
    and local .ics files work. The reference's "Connect Google / Outlook"
    link routes to this documented workflow.

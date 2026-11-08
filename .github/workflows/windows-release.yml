@@ -46,7 +46,7 @@ jobs:
               if (Test-Path $log) { Get-Content -LiteralPath $log -Tail 35 | Write-Host }
               throw "WPF UI self-check failed (exit $($proc.ExitCode))"
             }
-            Write-Host 'WPF shell expand/collapse, visible content geometry and 13 navigation module handlers passed'
+            Write-Host 'WPF shell expand/collapse, visible content geometry and 12 navigation module handlers passed'
           }
           finally {
             if (!$proc.HasExited) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }

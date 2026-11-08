@@ -23,7 +23,6 @@ public static class PortableData
     public static PortableSettings Settings { get; private set; } = new();
     /// <summary>Replace the whole settings object (used by Reset settings).</summary>
     public static void ReplaceSettings(PortableSettings replacement) { Settings = replacement; SaveSettings(); }
-    public static DpapiCredentialStore Credentials { get; private set; } = null!;
 
     public static void Initialize()
     {
@@ -32,7 +31,6 @@ public static class PortableData
             FileAccess.ReadWrite, FileShare.ReadWrite)) { }
         File.Delete(Path.Combine(Root, ".writable"));
         Settings = Read<PortableSettings>("settings.json") ?? new PortableSettings();
-        Credentials = new DpapiCredentialStore(Root);
     }
 
     public static T? Read<T>(string relative)

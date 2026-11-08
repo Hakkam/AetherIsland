@@ -5,8 +5,8 @@ Compact pill on top of your desktop; a click expands it into one dense dark
 panel with: dashboard (live weather, real quick toggles, app launcher, day
 progress), screen time with categories, now-playing + calendar, camera
 mirror, file shelf, tasks with reminders, notes, focus timers, wellbeing,
-weather detail, Wi-Fi/Bluetooth, verified AI quota, utilities and full
-settings — all local-first, no telemetry.
+weather detail, Wi-Fi/Bluetooth, utilities and full settings — all
+local-first, no telemetry.
 
 ![dashboard](docs/screenshots/dashboard.png)
 ![live](docs/screenshots/live-desktop-expanded.png)
@@ -21,8 +21,6 @@ settings — all local-first, no telemetry.
   keep-awake, screenshot → clipboard, lock, SMTC media, Open-Meteo weather
   with IP auto-location, WLAN scan (honest about Windows' Location
   permission), Bluetooth devices.
-- **Verified AI quota only** — OpenAI organization API monthly hard spend
-  limit (admin key, DPAPI-encrypted). No invented provider cards, ever.
 - **Portable & installed** — self-contained ZIP (no runtime, no admin) and
   a per-user Inno Setup installer with a clean uninstaller that preserves
   your `Data\` folder by default.
@@ -58,14 +56,14 @@ packages both artifacts and uploads them (`.github/workflows/windows-release.yml
 - docs/ARCHITECTURE.md · docs/IMPLEMENTATION_AUDIT.md ·
   docs/REFERENCE_FIDELITY_MATRIX.md · docs/FEATURE_COVERAGE.md
 - docs/INSTALLATION.md · docs/MANUAL_INSTALL.md · docs/PORTABLE_USAGE.md
-- docs/AI_PROVIDER_CAPABILITIES.md · docs/KNOWN_LIMITATIONS.md ·
+- docs/KNOWN_LIMITATIONS.md ·
   docs/FINAL_ACCEPTANCE_REPORT.md
 
 ## Modules
 
 Home · Dashboard (weather / quick toggles / apps / day) · File shelf · Tasks ·
 Notes · Focus · Media + Calendar (+ Mirror) · Wellbeing · Screen time ·
-Weather · Network · AI quota · Utilities — plus Settings (gear) and tray
+Weather · Network · Utilities — plus Settings (gear) and tray
 menu (Open, Refresh, Settings, Launch at startup, Reset position, Exit).
 
 Keyboard: `Ctrl+Alt+Space` toggles the island · `Esc` collapses · drag the

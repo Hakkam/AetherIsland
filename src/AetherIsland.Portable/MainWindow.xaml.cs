@@ -52,7 +52,6 @@ public partial class MainWindow : Window
         new("screen",    "screen",    "Screen time",RenderScreen,    "Screen time"),
         new("weather",   "weather",   "Weather",    RenderWeather,   "Weather"),
         new("network",   "network",   "Network",    RenderNetwork,   "Wi-Fi and Bluetooth"),
-        new("ai",        "ai",        "AI quota",   RenderAi,        "Verified AI quota"),
         new("utilities", "utilities", "Utilities",  RenderUtilities, "Utilities"),
     };
 
@@ -168,7 +167,6 @@ public partial class MainWindow : Window
         "screen"    => RenderScreen(),
         "weather"   => RenderWeather(),
         "network"   => RenderNetwork(),
-        "ai"        => RenderAi(),
         "utilities" => RenderUtilities(),
         "settings"  => RenderSettings(),
         _ => RenderDashboard()

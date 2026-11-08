@@ -23,7 +23,7 @@ pending. UI / Logic / Persistence / Errors columns summarize implementation.
 | Wellbeing | Cups + settings | Eye/stand reminders via scheduler | Settings | — | Implemented |
 | Weather | Detail + editor | Open-Meteo + geocoding + IP locate | Location + unit + cache | Offline/cached labels | Verified (live data) |
 | Network | Radios + lists | Radio state, WLAN scan, BT devices | — | Location-permission hint | Implemented (states verified; scan OS-blocked here) |
-| AI quota | Key entry + card | OpenAI Admin spend-limit (verified only) | DPAPI key store | No-invention empty states | Implemented (needs org key) |
+| AI quota | Removed | Removed from the product by user request (2026-11-08) | — | — | Removed |
 | Utilities | Action rows | Screenshot/lock/tm/explorer/settings/clipboard | — | Balloon feedback | Implemented (visual captured) |
 | Settings | Full page | Theme/accent/schedule/unit/startup/hotkey/privacy/calendars | settings.json | — | Verified (startup key written live) |
 | Onboarding | In-panel first-run (location auto-detect, consent gates) | — | — | — | Implemented (auto-locate verified) |

@@ -230,7 +230,7 @@ public partial class MainWindow
         // ---- about card ----
         var about = SettingsCard("ai", "About & diagnostics", "Local-first · no telemetry");
         about.Body.Children.Add(Ui.Text(
-            "Aether Island Portable · all data in Data\\ · API keys use Windows DPAPI (bound to this Windows account).",
+            "Aether Island Portable · all data in Data\\ · no accounts, no API keys, no telemetry.",
             9.3, false, Theme.Dim, wrap: true));
         about.Body.Children.Add(Ui.Spacer(0, 7));
         about.Body.Children.Add(Ui.H(
