@@ -527,7 +527,7 @@ public partial class MainWindow : Window
         if (PillDot is null) return;
         var focus = FocusService.Instance;
         string status;
-        Brush dot = Ui.Solid(Theme.IsDark ? "#33A6F0" : "#1B7FBE");
+        Brush dot = Theme.Accent; // follows the chosen accent color
         if (focus.Running)
         {
             status = (focus.StopwatchMode ? "Stopwatch " : "Focus ") + focus.Clock;
